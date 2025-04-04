@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texas Hold'em Poker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body, button, input, select, textarea {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .card {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid black;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.25rem;
+            margin: 0.125rem;
+            min-width: 40px;
+            min-height: 60px;
+            background-color: white;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+            font-size: 0.8rem;
+            line-height: 1;
+            text-align: center;
+        }
+        .card-back {
+            background-color: #4a5568;
+            color: #4a5568;
+            border-color: #2d3748;
+            user-select: none;
+        }
+        .card-red {
+            color: #ef4444;
+        }
+        .card-black {
+            color: #1f2937;
+        }
+        .card-rank {
+            font-size: 1rem;
+            font-weight: bold;
+            display: block;
+        }
+        .card-suit {
+            font-size: 0.8rem;
+            display: block;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: 2px solid #4a5568;
+            background-color: #a0aec0;
+            color: #1a202c;
+            box-shadow: 2px 2px 0px #4a5568;
+            transition: all 0.1s ease-in-out;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        button:hover {
+            background-color: #cbd5e0;
+            box-shadow: 1px 1px 0px #4a5568;
+            transform: translate(1px, 1px);
+        }
+        button:active {
+            background-color: #e2e8f0;
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+        button:disabled {
+            background-color: #e2e8f0;
+            color: #a0aec0;
+            border-color: #cbd5e0;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+        input[type="number"], select {
+            padding: 0.5rem;
+            border: 2px solid #4a5568;
+            border-radius: 0.375rem;
+            background-color: white;
+            font-size: 0.8rem;
+        }
+        .game-container {
+            max-width: 900px;
+            margin: 1rem auto;
+            padding: 1rem;
+            background-color: #2c7a4b;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .player-area, .bot-area, .community-area {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem;
+            min-height: 100px;
+        }
+        .active-player {
+             border: 3px solid #facc15;
+             box-shadow: 0 0 10px #facc15;
+        }
+    </style>
+</head>
+<body class="bg-gray-800 text-white p-4">
+
+    <div id="settings-screen" class="game-container bg-gray-700 text-center p-6">
+        <h1 class="text-2xl mb-4">Texas Hold'em Settings</h1>
+        <div class="mb-4">
+            <label for="num-bots" class="mr-2">Number of Bots (1-4):</label>
+            <select id="num-bots" class="text-black p-2 text-base w-32">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+        <div class="mb-6">
+            <label for="difficulty" class="mr-2">Difficulty:</label>
+            <select id="difficulty" class="text-black p-2 text-base w-32">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+        <button id="start-game-btn" class="mr-2">Start New Game</button>
+        <button id="load-game-btn">Load Saved Game</button>
+    </div>
+
+    <div id="game-screen" class="game-container hidden">
+        <div id="bots-area" class="flex justify-around mb-4">
+        </div>
+
+        <div class="community-area text-center mb-4">
+            <h2 class="text-lg mb-2">Community Cards</h2>
+            <div id="community-cards" class="flex justify-center items-center min-h-[70px]">
+            </div>
+            <div class="mt-2">Pot: <span id="pot-amount">0</span> coins</div>
+        </div>
+
+        <div id="player-area" class="player-area text-center">
+            <h2 class="text-lg mb-2">Player 1 (You)</h2>
+            <div>Coins: <span id="player-coins">100</span></div>
+            <div id="player-cards" class="my-2 min-h-[70px]">
+            </div>
+            <div id="player-actions" class="mt-2 space-x-2">
+                <button id="fold-btn">Fold</button>
+                <button id="check-btn">Check</button>
+                <button id="call-btn">Call</button>
+                <button id="bet-btn">Bet</button>
+                <button id="raise-btn">Raise</button>
+                <input type="number" id="bet-amount" min="1" value="5" class="text-black w-20">
+            </div>
+            <div id="player-current-bet" class="mt-1 text-sm">Current Bet: 0</div>
+        </div>
+
+        <div id="message-area" class="mt-4 text-center bg-gray-700 p-2 rounded-md min-h-[30px]">
+            Welcome to Texas Hold'em!
+        </div>
+
+        <div class="mt-4 text-center space-x-2">
+            <button id="save-game-btn">Save Game</button>
+            <button id="quit-game-btn">Quit to Settings</button>
+        </div>
+    </div>
+
+    <script>
+        const SUITS = ["♠", "♥", "♦", "♣"];
+        const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+        const HAND_RANKS = [
+            "High Card", "One Pair", "Two Pair", "Three of a Kind",
+            "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"
+        ];
+        const STARTING_COINS = 100;
+        const SMALL_BLIND = 2;
+        const BIG_BLIND = 3;
+        const LOCAL_STORAGE_KEY = 'texasHoldemGameState';
+
+        let gameState = {
+            players: [],
+            deck: [],
+            communityCards: [],
+            pot: 0,
+            currentPlayerIndex: 0,
+            dealerIndex: 0,
+            currentBet: 0,
+            bettingRound: '',
+            numBots: 3,
+            difficulty: 'medium',
+            minRaise: BIG_BLIND,
+            roundInProgress: false,
+            gameOver: false,
+            lastRaiserIndex: -1,
+        };
+
+        const settingsScreen = document.getElementById('settings-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const numBotsSelect = document.getElementById('num-bots');
+        const difficultySelect = document.getElementById('difficulty');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const loadGameBtn = document.getElementById('load-game-btn');
+        const botsArea = document.getElementById('bots-area');
+        const communityCardsDiv = document.getElementById('community-cards');
+        const potAmountSpan = document.getElementById('pot-amount');
+        const playerAreaDiv = document.getElementById('player-area');
+        const playerCoinsSpan = document.getElementById('player-coins');
+        const playerCardsDiv = document.getElementById('player-cards');
+        const playerActionsDiv = document.getElementById('player-actions');
+        const foldBtn = document.getElementById('fold-btn');
+        const checkBtn = document.getElementById('check-btn');
+        const callBtn = document.getElementById('call-btn');
+        const betBtn = document.getElementById('bet-btn');
+        const raiseBtn = document.getElementById('raise-btn');
+        const betAmountInput = document.getElementById('bet-amount');
+        const playerCurrentBetDiv = document.getElementById('player-current-bet');
+        const messageArea = document.getElementById('message-area');
+        const saveGameBtn = document.getElementById('save-game-btn');
+        const quitGameBtn = document.getElementById('quit-game-btn');
+
+        function createDeck() {
+            const deck = [];
+            for (const suit of SUITS) {
+                for (const rank of RANKS) {
+                    deck.push({ suit, rank, value: getRankValue(rank) });
+                }
+            }
+            return deck;
+        }
+
+        function getRankValue(rank) {
+            if (rank >= '2' && rank <= '9') return parseInt(rank);
+            if (rank === 'T') return 10;
+            if (rank === 'J') return 11;
+            if (rank === 'Q') return 12;
+            if (rank === 'K') return 13;
+            if (rank === 'A') return 14;
+            return 0;
+        }
+
+        function shuffleDeck(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function createCardElement(card, faceUp = true) {
+            const cardDiv = document.createElement('div');
+            cardDiv.classList.add('card');
+            if (faceUp) {
+                const rankSpan = document.createElement('span');
+                rankSpan.classList.add('card-rank');
+                rankSpan.textContent = card.rank;
+
+                const suitSpan = document.createElement('span');
+                suitSpan.classList.add('card-suit');
+                suitSpan.textContent = card.suit;
+
+                cardDiv.appendChild(rankSpan);
+                cardDiv.appendChild(suitSpan);
+
+                if (card.suit === '♥' || card.suit === '♦') {
+                    cardDiv.classList.add('card-red');
+                } else {
+                    cardDiv.classList.add('card-black');
+                }
+            } else {
+                cardDiv.classList.add('card-back');
+                const rankSpan = document.createElement('span');
+                rankSpan.classList.add('card-rank');
+                rankSpan.innerHTML = '&nbsp;';
+
+                const suitSpan = document.createElement('span');
+                suitSpan.classList.add('card-suit');
+                suitSpan.innerHTML = '&nbsp;';
+                cardDiv.appendChild(rankSpan);
+                cardDiv.appendChild(suitSpan);
+            }
+            return cardDiv;
+        }
+
+        function updateUI() {
+            botsArea.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                if (player.isBot) {
+                    const botDiv = document.createElement('div');
+                    botDiv.classList.add('bot-area', 'text-center', 'flex-1', 'mx-1');
+                    if (index === gameState.currentPlayerIndex) {
+                        botDiv.classList.add('active-player');
+                    }
+                    botDiv.innerHTML = `
+                        <h3 class="text-md mb-1">${player.name} ${index === gameState.dealerIndex ? '(D)' : ''}</h3>
+                        <div>Coins: ${player.coins}</div>
+                        <div class="my-1 min-h-[70px] flex justify-center items-center">
+                            ${player.cards.map(card => createCardElement(card, false).outerHTML).join('')}
+                            ${player.folded ? '<span class="text-red-500 font-bold">FOLDED</span>' : ''}
+                        </div>
+                        <div class="text-sm">Bet: ${player.currentBet}</div>
+                    `;
+                    botsArea.appendChild(botDiv);
+                }
+            });
+
+            communityCardsDiv.innerHTML = '';
+            gameState.communityCards.forEach(card => {
+                communityCardsDiv.appendChild(createCardElement(card, true));
+            });
+
+            potAmountSpan.textContent = gameState.pot;
+
+            const humanPlayer = gameState.players.find(p => !p.isBot);
+            if (humanPlayer) {
+                 playerCoinsSpan.textContent = humanPlayer.coins;
+                 playerCardsDiv.innerHTML = '';
+                 humanPlayer.cards.forEach(card => {
+                     playerCardsDiv.appendChild(createCardElement(card, true));
+                 });
+                 playerCurrentBetDiv.textContent = `Current Bet: ${humanPlayer.currentBet}`;
+                 if (gameState.players.indexOf(humanPlayer) === gameState.dealerIndex) {
+                    playerAreaDiv.querySelector('h2').textContent = `Player 1 (You) (D)`;
+                 } else {
+                    playerAreaDiv.querySelector('h2').textContent = `Player 1 (You)`;
+                 }
+
+                 if (gameState.players.indexOf(humanPlayer) === gameState.currentPlayerIndex) {
+                    playerAreaDiv.classList.add('active-player');
+                 } else {
+                    playerAreaDiv.classList.remove('active-player');
+                 }
+                 if(humanPlayer.folded) {
+                     playerCardsDiv.innerHTML = '<span class="text-red-500 font-bold">FOLDED</span>';
+                 }
+
+            } else {
+                playerAreaDiv.innerHTML = '<h2>Game Over</h2>';
+            }
+
+            updateActionButtons();
+
+            if (gameState.roundInProgress || gameState.gameOver) {
+                settingsScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+            } else {
+                settingsScreen.classList.remove('hidden');
+                gameScreen.classList.add('hidden');
+            }
+        }
+
+        function updateActionButtons() {
+            const player = getCurrentPlayer();
+            if (!player || player.isBot || player.folded || gameState.gameOver) {
+                disablePlayerActions();
+                return;
+            }
+
+            const canCheck = player.currentBet === gameState.currentBet;
+            const canBet = gameState.currentBet === 0;
+            const canCall = player.currentBet < gameState.currentBet && player.coins >= (gameState.currentBet - player.currentBet);
+            const canRaise = player.coins > (gameState.currentBet - player.currentBet) && player.coins > 0;
+
+            foldBtn.disabled = false;
+            checkBtn.disabled = !canCheck;
+            callBtn.disabled = !canCall;
+            betBtn.disabled = !canBet;
+            raiseBtn.disabled = !canRaise || canBet;
+
+            if (canBet) {
+                callBtn.classList.add('hidden');
+                checkBtn.classList.remove('hidden');
+                betBtn.classList.remove('hidden');
+                raiseBtn.classList.add('hidden');
+                 betAmountInput.min = Math.min(player.coins, BIG_BLIND);
+            } else if (canCall || canCheck) {
+                 callBtn.classList.remove('hidden');
+                 checkBtn.classList.remove('hidden');
+                 betBtn.classList.add('hidden');
+                 raiseBtn.classList.remove('hidden');
+                 callBtn.textContent = `Call ${gameState.currentBet - player.currentBet}`;
+                 betAmountInput.min = Math.min(player.coins - (gameState.currentBet - player.currentBet), gameState.minRaise);
+            } else {
+                 callBtn.classList.remove('hidden');
+                 callBtn.textContent = `All-in ${player.coins}`;
+                 checkBtn.classList.add('hidden');
+                 betBtn.classList.add('hidden');
+                 raiseBtn.classList.add('hidden');
+                 callBtn.disabled = false;
+            }
+
+            betAmountInput.max = player.coins - (canRaise ? (gameState.currentBet - player.currentBet) : 0);
+             if (parseInt(betAmountInput.value) > parseInt(betAmountInput.max)) {
+                 betAmountInput.value = betAmountInput.max;
+             }
+             if (parseInt(betAmountInput.value) < parseInt(betAmountInput.min)) {
+                betAmountInput.value = betAmountInput.min;
+            }
+
+            betAmountInput.disabled = !(canBet || canRaise);
+
+        }
+
+        function disablePlayerActions() {
+            foldBtn.disabled = true;
+            checkBtn.disabled = true;
+            callBtn.disabled = true;
+            betBtn.disabled = true;
+            raiseBtn.disabled = true;
+            betAmountInput.disabled = true;
+        }
+
+        function showMessage(msg, duration = 3000) {
+            messageArea.textContent = msg;
+        }
+
+        function initGame(loadSaved = false) {
+            if (loadSaved) {
+                const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (savedState) {
+                    try {
+                        gameState = JSON.parse(savedState);
+                        if (!gameState.players || !gameState.deck || gameState.players.length === 0) {
+                            throw new Error("Invalid saved state");
+                        }
+                        showMessage("Game loaded successfully!");
+                        gameState.roundInProgress = true;
+                        gameState.gameOver = false;
+                        gameState.players = gameState.players.map((p, index) => ({
+                            ...p,
+                            id: p.id || `player-${index}`,
+                            isBot: p.isBot !== undefined ? p.isBot : (index > 0),
+                            folded: p.folded || false,
+                            currentBet: p.currentBet || 0,
+                            difficulty: p.difficulty || gameState.difficulty
+                        }));
+                    } catch (error) {
+                        console.error("Failed to load saved game:", error);
+                        showMessage("Failed to load saved game. Starting new game.");
+                        localStorage.removeItem(LOCAL_STORAGE_KEY);
+                        setupNewGame();
+                    }
+                } else {
+                    showMessage("No saved game found. Starting new game.");
+                    setupNewGame();
+                }
+            } else {
+                setupNewGame();
+            }
+
+            if (!gameState.gameOver) {
+                 if (!gameState.roundInProgress) {
+                    startRound();
+                 } else {
+                     updateUI();
+                     if (gameState.players[gameState.currentPlayerIndex]?.isBot) {
+                         setTimeout(runBotTurn, 300);
+                     } else {
+                         updateActionButtons();
+                     }
+                 }
+            } else {
+                 showMessage("Loaded game is over. Start a new game?");
+                 gameState.roundInProgress = false;
+                 updateUI();
+            }
+        }
+
+
+        function setupNewGame() {
+            gameState.numBots = parseInt(numBotsSelect.value);
+            gameState.difficulty = difficultySelect.value;
+            gameState.players = [];
+            gameState.gameOver = false;
+            gameState.roundInProgress = false;
+
+            gameState.players.push({
+                id: 'player-0', name: 'Player 1 (You)', cards: [], coins: STARTING_COINS, currentBet: 0, folded: false, isBot: false
+            });
+
+            for (let i = 1; i <= gameState.numBots; i++) {
+                gameState.players.push({
+                    id: `player-${i}`, name: `Bot ${i}`, cards: [], coins: STARTING_COINS, currentBet: 0, folded: false, isBot: true, difficulty: gameState.difficulty
+                });
+            }
+
+            gameState.dealerIndex = Math.floor(Math.random() * gameState.players.length);
+             showMessage(`New game started with ${gameState.numBots} bot(s) on ${gameState.difficulty} difficulty.`);
+        }
+
+
+        function startRound() {
+            if (gameState.gameOver) {
+                showMessage("Game is over. Start a new game.");
+                return;
+            }
+
+            const activePlayers = gameState.players.filter(p => p.coins > 0);
+            if (activePlayers.length <= 1) {
+                gameState.gameOver = true;
+                const winner = activePlayers[0];
+                showMessage(`Game Over! ${winner ? winner.name + ' wins!' : 'No winner?'} Start a new game.`);
+                gameState.roundInProgress = false;
+                updateUI();
+                return;
+            }
+
+
+            gameState.deck = createDeck();
+            shuffleDeck(gameState.deck);
+            gameState.communityCards = [];
+            gameState.pot = 0;
+            gameState.currentBet = 0;
+            gameState.minRaise = BIG_BLIND;
+            gameState.bettingRound = 'preflop';
+            gameState.roundInProgress = true;
+            gameState.lastRaiserIndex = -1;
+
+            gameState.players.forEach(player => {
+                player.cards = [];
+                player.currentBet = 0;
+                player.folded = player.coins <= 0;
+            });
+
+            gameState.dealerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
+            let attempts = 0;
+            while(gameState.players[gameState.dealerIndex].coins <= 0 && attempts < gameState.players.length) {
+                gameState.dealerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
+                attempts++;
+            }
+
+
+            dealPrivateCards();
+
+            const sbIndex = getNextActivePlayerIndex(gameState.dealerIndex);
+            const bbIndex = getNextActivePlayerIndex(sbIndex);
+
+            postBlind(sbIndex, SMALL_BLIND, "Small Blind");
+            postBlind(bbIndex, BIG_BLIND, "Big Blind");
+
+            gameState.currentBet = BIG_BLIND;
+            gameState.currentPlayerIndex = getNextActivePlayerIndex(bbIndex);
+             gameState.lastRaiserIndex = bbIndex;
+
+            showMessage(`Round started. Dealer: ${gameState.players[gameState.dealerIndex].name}. Blinds posted. Your turn, ${gameState.players[gameState.currentPlayerIndex].name}.`);
+            updateUI();
+
+            nextTurn();
+
+        }
+
+         function getNextActivePlayerIndex(startIndex) {
+            let currentIndex = (startIndex + 1) % gameState.players.length;
+            let attempts = 0;
+            while ((gameState.players[currentIndex].folded || gameState.players[currentIndex].coins <= 0) && attempts < gameState.players.length * 2) {
+                currentIndex = (currentIndex + 1) % gameState.players.length;
+                attempts++;
+            }
+             if (attempts >= gameState.players.length * 2) return -1;
+            return currentIndex;
+        }
+
+        function getPreviousActivePlayerIndex(startIndex) {
+            let currentIndex = (startIndex - 1 + gameState.players.length) % gameState.players.length;
+            let attempts = 0;
+            while ((gameState.players[currentIndex].folded || gameState.players[currentIndex].coins <= 0) && attempts < gameState.players.length * 2) {
+                 currentIndex = (currentIndex - 1 + gameState.players.length) % gameState.players.length;
+                 attempts++;
+            }
+            if (attempts >= gameState.players.length * 2) return -1;
+            return currentIndex;
+        }
+
+
+         function postBlind(playerIndex, amount, blindType) {
+            const player = gameState.players[playerIndex];
+            if (!player || player.folded) return;
+
+            const blindAmount = Math.min(player.coins, amount);
+            player.coins -= blindAmount;
+            player.currentBet = blindAmount;
+            gameState.pot += blindAmount;
+            showMessage(`${player.name} posts ${blindType} of ${blindAmount}`, 2000);
+
+             if (blindAmount > gameState.currentBet) {
+                 gameState.currentBet = blindAmount;
+             }
+        }
+
+
+        function dealPrivateCards() {
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < gameState.players.length; j++) {
+                    const playerIndex = (gameState.dealerIndex + 1 + j) % gameState.players.length;
+                    if (!gameState.players[playerIndex].folded && gameState.deck.length > 0) {
+                        gameState.players[playerIndex].cards.push(gameState.deck.pop());
+                    }
+                }
+            }
+        }
+
+        function dealCommunityCards(count) {
+            if (gameState.deck.length > 0) gameState.deck.pop();
+
+            for (let i = 0; i < count; i++) {
+                if (gameState.deck.length > 0) {
+                    gameState.communityCards.push(gameState.deck.pop());
+                }
+            }
+        }
+
+        function nextTurn() {
+            if (gameState.gameOver) return;
+
+             if (checkBettingRoundEnd()) {
+                 endBettingRound();
+                 return;
+             }
+
+            const player = getCurrentPlayer();
+
+            if (!player || player.folded || player.coins === 0) {
+                moveToNextPlayer();
+                nextTurn();
+                return;
+            }
+
+            updateUI();
+
+            if (player.isBot) {
+                disablePlayerActions();
+                showMessage(`${player.name}'s turn...`);
+                setTimeout(runBotTurn, 1500 + Math.random() * 1000);
+            } else {
+                showMessage(`Your turn. Current bet to call: ${gameState.currentBet}.`);
+                updateActionButtons();
+            }
+        }
+
+        function checkBettingRoundEnd() {
+            const activePlayersInRound = gameState.players.filter(p => !p.folded);
+            if (activePlayersInRound.length <= 1) {
+                 return true;
+            }
+
+            const firstActorIndex = getNextActivePlayerIndex(gameState.lastRaiserIndex !== -1 ? gameState.lastRaiserIndex : getPreviousActivePlayerIndex(getNextActivePlayerIndex(gameState.dealerIndex)));
+
+            if (gameState.currentPlayerIndex === firstActorIndex) {
+                 let allMatched = true;
+                 activePlayersInRound.forEach(p => {
+                     if (p.currentBet < gameState.currentBet && p.coins > 0) {
+                         allMatched = false;
+                     }
+                 });
+                 const isPreflopBBCheck = gameState.bettingRound === 'preflop' &&
+                                         gameState.currentPlayerIndex === getNextActivePlayerIndex(getNextActivePlayerIndex(gameState.dealerIndex)) &&
+                                         gameState.currentBet === BIG_BLIND;
+
+                 if (allMatched && !isPreflopBBCheck) {
+                     return true;
+                 }
+            }
+
+            let everyoneActed = true;
+            let betsEqual = true;
+             activePlayersInRound.forEach(p => {
+                 if (p.currentBet < gameState.currentBet && p.coins > 0) {
+                     betsEqual = false;
+                 }
+             });
+
+            return false;
+        }
+
+
+        function endBettingRound() {
+             showMessage(`Betting round (${gameState.bettingRound}) ended.`);
+            gameState.players.forEach(p => {
+                p.currentBet = 0;
+            });
+            gameState.currentBet = 0;
+            gameState.minRaise = BIG_BLIND;
+            gameState.lastRaiserIndex = -1;
+
+            gameState.currentPlayerIndex = getNextActivePlayerIndex(gameState.dealerIndex);
+
+            switch (gameState.bettingRound) {
+                case 'preflop':
+                    gameState.bettingRound = 'flop';
+                    dealCommunityCards(3);
+                    showMessage("Dealing the Flop...");
+                    break;
+                case 'flop':
+                    gameState.bettingRound = 'turn';
+                    dealCommunityCards(1);
+                     showMessage("Dealing the Turn...");
+                    break;
+                case 'turn':
+                    gameState.bettingRound = 'river';
+                    dealCommunityCards(1);
+                     showMessage("Dealing the River...");
+                    break;
+                case 'river':
+                    showdown();
+                    return;
+            }
+
+            const activePlayersLeft = gameState.players.filter(p => !p.folded && p.coins > 0).length;
+            if (activePlayersLeft > 1) {
+                updateUI();
+                setTimeout(nextTurn, 1500);
+            } else {
+                awardPotToWinner();
+            }
+        }
+
+
+         function awardPotToWinner() {
+             const winner = gameState.players.find(p => !p.folded);
+             if (winner) {
+                 winner.coins += gameState.pot;
+                 showMessage(`${winner.name} wins the pot of ${gameState.pot}!`, 5000);
+             } else {
+                 showMessage(`Error: Could not determine winner. Pot: ${gameState.pot}`, 5000);
+             }
+             gameState.pot = 0;
+             updateUI();
+             setTimeout(() => {
+                 gameState.roundInProgress = false;
+                 startRound();
+             }, 4000);
+         }
+
+
+        function showdown() {
+             showMessage("Showdown!");
+             updateUI();
+
+            const contenders = gameState.players.filter(p => !p.folded);
+            if (contenders.length === 1) {
+                awardPotToWinner();
+                return;
+            }
+
+            if (contenders.length === 0) {
+                 showMessage("Error: No contenders in showdown?");
+                 updateUI();
+                 setTimeout(() => {
+                    gameState.roundInProgress = false;
+                    startRound();
+                 }, 4000);
+                 return;
+            }
+
+
+            let bestHands = [];
+
+            contenders.forEach((player, index) => {
+                const playerIndexOriginal = gameState.players.findIndex(p => p.id === player.id);
+                const allCards = [...player.cards, ...gameState.communityCards];
+                const bestHandInfo = evaluateBestHand(allCards);
+                bestHands.push({ playerIndex: playerIndexOriginal, ...bestHandInfo });
+
+                 const botAreaEl = botsArea.children[playerIndexOriginal -1]
+                 const playerAreaEl = document.getElementById('player-area');
+                 const displayArea = player.isBot ? botAreaEl : playerAreaEl;
+                 if (displayArea) {
+                     let handInfoDiv = displayArea.querySelector('.hand-info');
+                     if (!handInfoDiv) {
+                         handInfoDiv = document.createElement('div');
+                         handInfoDiv.classList.add('hand-info', 'text-xs', 'mt-1');
+                         const cardsContainer = displayArea.querySelector('.my-1');
+                         if (cardsContainer) cardsContainer.parentNode.insertBefore(handInfoDiv, cardsContainer.nextSibling);
+                         else displayArea.appendChild(handInfoDiv);
+                     }
+                     handInfoDiv.textContent = `Best Hand: ${bestHandInfo.handName}`;
+                 }
+
+            });
+
+             botsArea.innerHTML = '';
+             gameState.players.forEach((player, index) => {
+                 if (player.isBot) {
+                     const botDiv = document.createElement('div');
+                     botDiv.classList.add('bot-area', 'text-center', 'flex-1', 'mx-1');
+                     const isContender = contenders.some(c => c.id === player.id);
+                     botDiv.innerHTML = `
+                         <h3 class="text-md mb-1">${player.name} ${index === gameState.dealerIndex ? '(D)' : ''}</h3>
+                         <div>Coins: ${player.coins}</div>
+                         <div class="my-1 min-h-[70px] flex justify-center items-center">
+                             ${player.cards.map(card => createCardElement(card, isContender).outerHTML).join('')}
+                             ${player.folded ? '<span class="text-red-500 font-bold">FOLDED</span>' : ''}
+                         </div>
+                         <div class="text-sm">Bet: ${player.currentBet}</div>
+                         <div class="hand-info text-xs mt-1">${isContender ? `Best Hand: ${bestHands.find(bh => bh.playerIndex === index)?.handName}` : ''}</div>
+                     `;
+                     botsArea.appendChild(botDiv);
+                 }
+             });
+
+
+            bestHands.sort((a, b) => {
+                if (b.handRank !== a.handRank) {
+                    return b.handRank - a.handRank;
+                }
+                for (let i = 0; i < a.handValue.length; i++) {
+                    if (b.handValue[i] !== a.handValue[i]) {
+                        return b.handValue[i] - a.handValue[i];
+                    }
+                }
+                return 0;
+            });
+
+            const winningRank = bestHands[0].handRank;
+            const winningValue = bestHands[0].handValue;
+            const winners = bestHands.filter(hand => {
+                if (hand.handRank !== winningRank) return false;
+                for (let i = 0; i < winningValue.length; i++) {
+                    if (hand.handValue[i] !== winningValue[i]) return false;
+                }
+                return true;
+            });
+
+            const winnerNames = winners.map(w => gameState.players[w.playerIndex].name).join(' and ');
+            const potShare = Math.floor(gameState.pot / winners.length);
+            const remainder = gameState.pot % winners.length;
+
+             showMessage(`${winnerNames} win(s) with ${bestHands[0].handName}! Each gets ${potShare} coins.`, 5000);
+
+            winners.forEach((winnerInfo, i) => {
+                const winnerPlayer = gameState.players[winnerInfo.playerIndex];
+                winnerPlayer.coins += potShare;
+                 if (i === 0 && remainder > 0) {
+                     winnerPlayer.coins += remainder;
+                 }
+            });
+
+            gameState.pot = 0;
+            updateUI();
+
+            setTimeout(() => {
+                gameState.roundInProgress = false;
+                startRound();
+            }, 6000);
+        }
+
+        function evaluateBestHand(sevenCards) {
+             if (!sevenCards || sevenCards.length < 5) {
+                 console.error("Not enough cards to evaluate:", sevenCards);
+                 return { handRank: 0, handValue: [0], handName: "Invalid", cards: [] };
+             }
+
+             const sortedCards = [...sevenCards].sort((a, b) => b.value - a.value);
+
+             const ranks = sortedCards.map(c => c.value);
+             const suits = sortedCards.map(c => c.suit);
+             const rankCounts = ranks.reduce((acc, rank) => { acc[rank] = (acc[rank] || 0) + 1; return acc; }, {});
+             const suitCounts = suits.reduce((acc, suit) => { acc[suit] = (acc[suit] || 0) + 1; return acc; }, {});
+             const counts = Object.values(rankCounts).sort((a, b) => b - a);
+
+             const isFlush = Object.values(suitCounts).some(count => count >= 5);
+             const flushSuit = isFlush ? Object.keys(suitCounts).find(suit => suitCounts[suit] >= 5) : null;
+             const flushCards = isFlush ? sortedCards.filter(c => c.suit === flushSuit) : [];
+
+             const uniqueRanks = [...new Set(ranks)].sort((a, b) => b - a);
+             let isStraight = false;
+             let straightHighCard = 0;
+             const ranksForStraight = [...new Set(ranks.map(r => r === 14 ? [14, 1] : r).flat())].sort((a, b) => a - b);
+
+             for (let i = 0; i <= ranksForStraight.length - 5; i++) {
+                 let potentialStraight = true;
+                 for (let j = 0; j < 4; j++) {
+                     if (ranksForStraight[i+j+1] !== ranksForStraight[i+j] + 1) {
+                         potentialStraight = false;
+                         break;
+                     }
+                 }
+                 if (potentialStraight) {
+                     isStraight = true;
+                     straightHighCard = ranksForStraight[i+4];
+                     break;
+                 }
+             }
+             if (isStraight && straightHighCard === 14) {
+             } else if (isStraight && straightHighCard === 5 && ranksForStraight.includes(14)) {
+                 straightHighCard = 5;
+             }
+
+             let isStraightFlush = false;
+             let royalFlush = false;
+             if (isFlush && isStraight) {
+                 const flushRanks = flushCards.map(c => c.value === 14 ? [14, 1] : c.value).flat().sort((a, b) => a - b);
+                 for (let i = 0; i <= flushRanks.length - 5; i++) {
+                     let potentialSF = true;
+                     for (let j = 0; j < 4; j++) {
+                         if (flushRanks[i+j+1] !== flushRanks[i+j] + 1) {
+                             potentialSF = false;
+                             break;
+                         }
+                     }
+                     if (potentialSF) {
+                         isStraightFlush = true;
+                         straightHighCard = flushRanks[i+4];
+                         if (straightHighCard === 14 && flushRanks[i] === 10) {
+                              royalFlush = true;
+                         } else if (straightHighCard === 5 && flushRanks.includes(14)) {
+                             straightHighCard = 5;
+                         }
+                         break;
+                     }
+                 }
+             }
+
+             if (royalFlush) return { handRank: 9, handValue: [14], handName: HAND_RANKS[9], cards: [] };
+             if (isStraightFlush) return { handRank: 8, handValue: [straightHighCard], handName: HAND_RANKS[8], cards: [] };
+             if (counts[0] === 4) {
+                 const fourRank = parseInt(Object.keys(rankCounts).find(rank => rankCounts[rank] === 4));
+                 const kicker = Math.max(...ranks.filter(r => r !== fourRank));
+                 return { handRank: 7, handValue: [fourRank, kicker], handName: HAND_RANKS[7], cards: [] };
+             }
+             if (counts[0] === 3 && counts[1] >= 2) {
+                 const threeRank = parseInt(Object.keys(rankCounts).find(rank => rankCounts[rank] === 3));
+                 const pairRank = Math.max(...Object.keys(rankCounts).filter(rank => rankCounts[rank] >= 2 && parseInt(rank) !== threeRank).map(r => parseInt(r)));
+                 return { handRank: 6, handValue: [threeRank, pairRank], handName: HAND_RANKS[6], cards: [] };
+             }
+             if (isFlush) {
+                 const flushValues = flushCards.map(c => c.value).sort((a, b) => b - a).slice(0, 5);
+                 return { handRank: 5, handValue: flushValues, handName: HAND_RANKS[5], cards: [] };
+             }
+             if (isStraight) {
+                 return { handRank: 4, handValue: [straightHighCard], handName: HAND_RANKS[4], cards: [] };
+             }
+              if (counts[0] === 3) {
+                 const threeRank = parseInt(Object.keys(rankCounts).find(rank => rankCounts[rank] === 3));
+                 const kickers = ranks.filter(r => r !== threeRank).sort((a, b) => b - a).slice(0, 2);
+                 return { handRank: 3, handValue: [threeRank, ...kickers], handName: HAND_RANKS[3], cards: [] };
+             }
+             if (counts[0] === 2 && counts[1] === 2) {
+                 const pairs = Object.keys(rankCounts).filter(rank => rankCounts[rank] === 2).map(r => parseInt(r)).sort((a, b) => b - a);
+                 const kicker = Math.max(...ranks.filter(r => r !== pairs[0] && r !== pairs[1]));
+                 return { handRank: 2, handValue: [pairs[0], pairs[1], kicker], handName: HAND_RANKS[2], cards: [] };
+             }
+             if (counts[0] === 2) {
+                 const pairRank = parseInt(Object.keys(rankCounts).find(rank => rankCounts[rank] === 2));
+                 const kickers = ranks.filter(r => r !== pairRank).sort((a, b) => b - a).slice(0, 3);
+                 return { handRank: 1, handValue: [pairRank, ...kickers], handName: HAND_RANKS[1], cards: [] };
+             }
+             const highCards = ranks.sort((a, b) => b - a).slice(0, 5);
+             return { handRank: 0, handValue: highCards, handName: HAND_RANKS[0], cards: [] };
+        }
+
+        function handleFold() {
+            const player = getCurrentPlayer();
+            if (!player || player.isBot) return;
+            player.folded = true;
+            showMessage(`${player.name} folds.`);
+            moveToNextPlayer();
+            nextTurn();
+        }
+
+        function handleCheck() {
+            const player = getCurrentPlayer();
+            if (!player || player.isBot) return;
+            if (player.currentBet < gameState.currentBet) {
+                showMessage("Cannot check, must call or raise.", 2000);
+                return;
+            }
+            showMessage(`${player.name} checks.`);
+            player.hasActed = true;
+            moveToNextPlayer();
+            nextTurn();
+        }
+
+        function handleCall() {
+             const player = getCurrentPlayer();
+             if (!player || player.isBot) return;
+
+             const callAmount = gameState.currentBet - player.currentBet;
+             const amountToCall = Math.min(callAmount, player.coins);
+
+             if (amountToCall <= 0) {
+                 showMessage("Already matched the bet or nothing to call.", 2000);
+                 handleCheck();
+                 return;
+             }
+
+             player.coins -= amountToCall;
+             player.currentBet += amountToCall;
+             gameState.pot += amountToCall;
+
+             showMessage(`${player.name} calls ${amountToCall}.`);
+             player.hasActed = true;
+             moveToNextPlayer();
+             nextTurn();
+         }
+
+
+        function handleBet() {
+            const player = getCurrentPlayer();
+            if (!player || player.isBot) return;
+
+            if (gameState.currentBet > 0) {
+                 showMessage("Cannot Bet, use Call or Raise.", 2000);
+                 return;
+            }
+
+            const betAmount = parseInt(betAmountInput.value);
+
+            if (isNaN(betAmount) || betAmount <= 0) {
+                showMessage("Invalid bet amount.", 2000);
+                return;
+            }
+            if (betAmount < BIG_BLIND && player.coins > BIG_BLIND) {
+                 showMessage(`Minimum bet is ${BIG_BLIND}.`, 2000);
+                 return;
+            }
+            if (betAmount > player.coins) {
+                showMessage("Cannot bet more coins than you have.", 2000);
+                return;
+            }
+
+            const amountToBet = Math.min(betAmount, player.coins);
+
+            player.coins -= amountToBet;
+            player.currentBet += amountToBet;
+            gameState.pot += amountToBet;
+            gameState.currentBet = player.currentBet;
+            gameState.minRaise = amountToBet;
+            gameState.lastRaiserIndex = gameState.players.indexOf(player);
+
+
+            showMessage(`${player.name} bets ${amountToBet}.`);
+            player.hasActed = true;
+            moveToNextPlayer();
+            nextTurn();
+        }
+
+        function handleRaise() {
+             const player = getCurrentPlayer();
+             if (!player || player.isBot) return;
+
+             const raiseAmountInput = parseInt(betAmountInput.value);
+
+             if (isNaN(raiseAmountInput) || raiseAmountInput <= 0) {
+                 showMessage("Invalid raise amount.", 2000);
+                 return;
+             }
+
+             const callAmount = gameState.currentBet - player.currentBet;
+             const totalBetAmount = callAmount + raiseAmountInput;
+
+             if (totalBetAmount > player.coins) {
+                 showMessage("Cannot raise more coins than you have.", 2000);
+                 return;
+             }
+
+             if (raiseAmountInput < gameState.minRaise && player.coins > totalBetAmount) {
+                 showMessage(`Minimum raise is ${gameState.minRaise}.`, 2000);
+                 return;
+             }
+
+             player.coins -= totalBetAmount;
+             gameState.pot += totalBetAmount;
+             player.currentBet += totalBetAmount;
+
+             gameState.currentBet = player.currentBet;
+             gameState.minRaise = raiseAmountInput;
+             gameState.lastRaiserIndex = gameState.players.indexOf(player);
+
+             showMessage(`${player.name} raises by ${raiseAmountInput} to ${player.currentBet}.`);
+             player.hasActed = true;
+             moveToNextPlayer();
+             nextTurn();
+         }
+
+
+        function moveToNextPlayer() {
+            gameState.currentPlayerIndex = getNextActivePlayerIndex(gameState.currentPlayerIndex);
+        }
+
+        function getCurrentPlayer() {
+            return gameState.players[gameState.currentPlayerIndex];
+        }
+
+        function runBotTurn() {
+            const bot = getCurrentPlayer();
+            if (!bot || !bot.isBot || bot.folded || gameState.gameOver) {
+                 moveToNextPlayer();
+                 nextTurn();
+                 return;
+            }
+
+            const availableCards = [...bot.cards, ...gameState.communityCards];
+            const handInfo = evaluateBestHand(availableCards);
+
+            const callAmount = gameState.currentBet - bot.currentBet;
+            const canCall = bot.coins >= callAmount;
+            const canCheck = callAmount <= 0;
+            const canRaise = bot.coins > callAmount;
+
+            let action = 'fold';
+
+            let foldThreshold = 0.2;
+            let raiseThreshold = 0.6;
+            let bluffChance = 0.05;
+
+            if (bot.difficulty === 'easy') {
+                foldThreshold = 0.3;
+                raiseThreshold = 0.7;
+                bluffChance = 0.01;
+            } else if (bot.difficulty === 'hard') {
+                foldThreshold = 0.15;
+                raiseThreshold = 0.5;
+                bluffChance = 0.15;
+            }
+
+            const handStrength = handInfo.handRank / 9.0;
+
+            if (canCheck) {
+                if (handStrength > raiseThreshold || (handStrength < foldThreshold && Math.random() < bluffChance * 0.5)) {
+                     action = 'raise';
+                } else {
+                    action = 'check';
+                }
+            } else {
+                if (handStrength > foldThreshold) {
+                    if (handStrength > raiseThreshold && canRaise) {
+                         action = 'raise';
+                    } else if (canCall) {
+                        action = 'call';
+                    } else {
+                        action = 'fold';
+                    }
+                } else {
+                     if (Math.random() < bluffChance && canRaise) {
+                         action = 'raise';
+                     } else {
+                         action = 'fold';
+                     }
+                }
+            }
+
+            switch (action) {
+                case 'fold':
+                    bot.folded = true;
+                    showMessage(`${bot.name} folds.`);
+                    break;
+                case 'check':
+                    showMessage(`${bot.name} checks.`);
+                    break;
+                case 'call':
+                    const amountToCall = Math.min(callAmount, bot.coins);
+                    bot.coins -= amountToCall;
+                    bot.currentBet += amountToCall;
+                    gameState.pot += amountToCall;
+                    showMessage(`${bot.name} calls ${amountToCall}.`);
+                    break;
+                case 'raise':
+                    let raiseAmount = gameState.minRaise;
+                     if (bot.difficulty === 'medium') raiseAmount = Math.max(gameState.minRaise, Math.floor(gameState.pot * 0.5));
+                     if (bot.difficulty === 'hard') raiseAmount = Math.max(gameState.minRaise, Math.floor(gameState.pot * 0.75));
+                     if (handStrength > 0.8) raiseAmount = Math.max(gameState.minRaise, gameState.pot);
+
+                     const totalBetRequired = callAmount + raiseAmount;
+                     const actualRaiseAmount = Math.min(raiseAmount, bot.coins - callAmount);
+                     const actualTotalBet = callAmount + actualRaiseAmount;
+
+                     if (actualTotalBet <= 0) {
+                         bot.folded = true;
+                         showMessage(`${bot.name} intended to raise but had to fold.`);
+                     } else if (actualRaiseAmount < gameState.minRaise && bot.coins > actualTotalBet) {
+                         if (canCall) {
+                             const amountToCall = Math.min(callAmount, bot.coins);
+                             bot.coins -= amountToCall;
+                             bot.currentBet += amountToCall;
+                             gameState.pot += amountToCall;
+                             showMessage(`${bot.name} calls ${amountToCall} (couldn't meet min raise).`);
+                         } else {
+                             bot.folded = true;
+                             showMessage(`${bot.name} folds (cannot call or meet min raise).`);
+                         }
+                     }
+                     else if (actualTotalBet > 0) {
+                         bot.coins -= actualTotalBet;
+                         gameState.pot += actualTotalBet;
+                         bot.currentBet += actualTotalBet;
+
+                         gameState.currentBet = bot.currentBet;
+                         gameState.minRaise = actualRaiseAmount;
+                         gameState.lastRaiserIndex = gameState.players.indexOf(bot);
+
+                         if (bot.coins == 0) {
+                             showMessage(`${bot.name} raises all-in (${actualTotalBet})!`);
+                         } else {
+                             showMessage(`${bot.name} raises by ${actualRaiseAmount} to ${bot.currentBet}.`);
+                         }
+                     } else {
+                          showMessage(`${bot.name} checks.`);
+                     }
+                    break;
+            }
+
+             bot.hasActed = true;
+
+            moveToNextPlayer();
+            updateUI();
+            setTimeout(nextTurn, 1000);
+        }
+
+        function saveGame() {
+            if (!gameState.roundInProgress && !gameState.gameOver) {
+                showMessage("Cannot save game before it starts.", 2000);
+                return;
+            }
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(gameState));
+                showMessage("Game saved successfully!", 2000);
+            } catch (error) {
+                console.error("Error saving game:", error);
+                showMessage("Failed to save game. Storage might be full.", 3000);
+            }
+        }
+
+        function loadGame() {
+            initGame(true);
+        }
+
+        function quitGame() {
+            gameState.roundInProgress = false;
+            gameState.gameOver = false;
+            settingsScreen.classList.remove('hidden');
+            gameScreen.classList.add('hidden');
+            showMessage("Game quit. Choose settings to start or load again.");
+        }
+
+        startGameBtn.addEventListener('click', () => initGame(false));
+        loadGameBtn.addEventListener('click', loadGame);
+        saveGameBtn.addEventListener('click', saveGame);
+        quitGameBtn.addEventListener('click', quitGame);
+
+        foldBtn.addEventListener('click', handleFold);
+        checkBtn.addEventListener('click', handleCheck);
+        callBtn.addEventListener('click', handleCall);
+        betBtn.addEventListener('click', handleBet);
+        raiseBtn.addEventListener('click', handleRaise);
+
+        if (localStorage.getItem(LOCAL_STORAGE_KEY)) {
+            loadGameBtn.disabled = false;
+        } else {
+            loadGameBtn.disabled = true;
+        }
+
+         settingsScreen.classList.remove('hidden');
+         gameScreen.classList.add('hidden');
+
+    </script>
+
+</body>
+</html>
