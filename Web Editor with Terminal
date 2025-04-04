@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Web Editor</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8f9fa; 
+            overflow: hidden; 
+        }
+
+        #file-tabs-container {
+             flex-shrink: 0; 
+             border-bottom: 1px solid #dee2e6;
+             background-color: #f1f3f5; 
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column; 
+            flex-grow: 1;
+            overflow: hidden; 
+        }
+
+        .editor-container {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden; 
+            min-height: 0; 
+        }
+
+        #file-explorer, #editor-preview-wrapper, #terminal-area {
+            border: 1px solid #dee2e6; 
+            box-sizing: border-box;
+            background-color: #ffffff; 
+            border-radius: 8px; 
+            margin: 5px; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        #file-explorer {
+            width: 250px; 
+            flex-shrink: 0; 
+            overflow-y: auto;
+            background-color: #f1f3f5; 
+            padding: 10px; 
+        }
+
+        #file-explorer h2 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: #495057; 
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        #current-path {
+            padding: 8px;
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            word-wrap: break-word;
+            color: #495057;
+            flex-shrink: 0;
+        }
+
+        #file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1; 
+            overflow-y: auto; 
+            min-height: 50px; 
+        }
+
+        #file-list li {
+            cursor: pointer;
+            padding: 8px 10px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            font-size: 0.95em;
+            transition: background-color 0.2s ease; 
+        }
+
+        #file-list li:hover {
+            background-color: #e9ecef;
+        }
+
+        #file-list li.active-file {
+            font-weight: bold;
+            background-color: #ced4da; 
+            color: #212529;
+        }
+
+        #file-list li::before {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+        }
+        #file-list li.type-file::before {
+            content: '📄';
+            font-size: 14px;
+        }
+        #file-list li.type-folder::before {
+            content: '📁';
+            font-size: 14px;
+        }
+
+
+        .file-controls {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+            flex-shrink: 0;
+        }
+
+        .file-controls button, .input-container button, .editor-controls button {
+            background-color: #007bff; 
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: background-color 0.2s ease;
+            margin: 0 3px; 
+        }
+
+        .file-controls button:hover, .input-container button:hover, .editor-controls button:hover {
+            background-color: #0056b3; 
+        }
+        
+        #run-button, #run-side-button {
+             background-color: #28a745; 
+        }
+        #run-button:hover, #run-side-button:hover {
+             background-color: #218838; 
+        }
+
+
+         .input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch; 
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            flex-shrink: 0;
+         }
+
+         .input-container input[type="text"] {
+             margin-bottom: 5px;
+             padding: 8px;
+             border: 1px solid #ced4da;
+             border-radius: 4px;
+             font-size: 0.9em;
+         }
+
+        #file-input, #input-file-data {
+            display: none;
+        }
+
+        #editor-preview-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column; 
+            padding: 0; 
+            margin-left: 0; 
+            min-width: 0; 
+        }
+
+        #editor-preview-container {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            min-height: 0; 
+        }
+
+        #editor-area {
+            flex: 1 1 50%; 
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; 
+            min-width: 200px; 
+            border-right: 1px solid #dee2e6; 
+            box-sizing: border-box;
+        }
+
+        #editor {
+            flex-grow: 1;
+            font-family: 'Courier New', Courier, monospace; 
+            border: none;
+            padding: 10px;
+            font-size: 1em;
+            line-height: 1.4;
+            resize: none; 
+            outline: none; 
+            background-color: #ffffff; 
+            min-height: 100px; 
+        }
+
+        .editor-controls {
+            padding: 10px;
+            border-top: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+            flex-shrink: 0; 
+            display: flex;
+            justify-content: flex-start;
+        }
+
+
+        #resizer {
+            flex: 0 0 5px; 
+            background-color: #adb5bd; 
+            cursor: col-resize; 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 10; 
+        }
+        #resizer:hover {
+             background-color: #007bff; 
+        }
+
+        #preview-area {
+            flex: 1 1 50%; 
+            display: none; 
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 200px; 
+            box-sizing: border-box;
+        }
+        #preview-area iframe {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            border: none; 
+            background-color: #ffffff; 
+        }
+
+        #file-tabs {
+            display: flex;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            overflow-x: auto; 
+            flex-shrink: 0; 
+        }
+
+        #file-tabs li {
+            padding: 10px 15px;
+            border-right: 1px solid #dee2e6;
+            cursor: pointer;
+            background-color: #e9ecef; 
+            color: #495057;
+            font-size: 0.9em;
+            white-space: nowrap; 
+            position: relative; 
+            transition: background-color 0.2s ease;
+        }
+        #file-tabs li:first-child {
+             border-left: 1px solid #dee2e6; 
+        }
+
+        #file-tabs li:hover {
+            background-color: #ced4da; 
+        }
+
+        #file-tabs li.active-tab {
+            background-color: #ffffff; 
+            font-weight: bold;
+            color: #007bff; 
+            border-bottom: 1px solid #ffffff; 
+            margin-bottom: -1px; 
+        }
+
+         .tab-close-btn {
+             margin-left: 8px;
+             font-weight: bold;
+             color: #6c757d; 
+             cursor: pointer;
+             padding: 0 4px;
+             border-radius: 50%;
+             font-size: 0.8em;
+             line-height: 1;
+             display: inline-block;
+             vertical-align: middle;
+         }
+         .tab-close-btn:hover {
+             color: #dc3545; 
+             background-color: #f8d7da; 
+         }
+
+        #terminal-area {
+            height: 200px; 
+            flex-shrink: 0; 
+            padding: 0; 
+            margin-top: 0; 
+            border-top: 1px solid #dee2e6; 
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        #terminal {
+            flex-grow: 1;
+            background-color: #212529; 
+            color: #f8f9fa; 
+            font-family: 'Courier New', Courier, monospace;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 0.9em;
+            line-height: 1.3;
+        }
+
+        #terminal-input {
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #343a40; 
+            color: #f8f9fa;
+            border: none;
+            padding: 8px 10px;
+            font-family: 'Courier New', Courier, monospace;
+            outline: none;
+            border-top: 1px solid #495057; 
+            font-size: 0.9em;
+            border-bottom-left-radius: 8px; 
+            border-bottom-right-radius: 8px;
+        }
+
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="file-tabs-container">
+        <ul id="file-tabs">
+            </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="editor-container">
+            <div id="file-explorer">
+                <h2>File Explorer</h2>
+                <div id="current-path">Current Path: /root</div>
+                <ul id="file-list"></ul>
+                <div class="file-controls">
+                    <button onclick="showCreateFilePrompt()">Create File</button>
+                    <button onclick="showCreateFolderPrompt()">Create Folder</button>
+                </div>
+                <div class="file-controls">
+                    <input type="file" id="file-input" onchange="handleFileInput(event)">
+                    <button onclick="document.getElementById('file-input').click()">Upload File</button>
+                    <button onclick="showDownloadPrompt()">Download File</button> 
+                </div>
+                <div class="input-container" id="create-file-input" style="display: none;">
+                    <input type="text" id="new-file-name" placeholder="Enter file name" onkeydown="handleCreateInput(event, 'file')">
+                    <button onclick="createFile()">Create</button>
+                </div>
+                <div class="input-container" id="create-folder-input" style="display: none;">
+                    <input type="text" id="new-folder-name" placeholder="Enter folder name" onkeydown="handleCreateInput(event, 'folder')">
+                    <button onclick="createFolder()">Create</button>
+                </div>
+            </div>
+
+            <div id="editor-preview-wrapper">
+                 <div id="editor-preview-container">
+                    <div id="editor-area">
+                        <textarea id="editor" spellcheck="false"></textarea>
+                    </div>
+                    <div id="resizer"></div>
+                    <div id="preview-area">
+                        <iframe id="preview-panel" title="Preview Panel"></iframe>
+                    </div>
+                </div>
+                <div class="editor-controls">
+                    <button id="run-button" onclick="runCodeNewTab()">Run (New Tab)</button>
+                    <button id="run-side-button" onclick="toggleSidePreview()">Run Side-by-Side</button>
+                 </div>
+            </div>
+        </div>
+
+        <div id="terminal-area">
+            <div id="terminal"></div>
+            <input type="text" id="terminal-input" onkeydown="handleTerminalInput(event)" placeholder="Enter command">
+        </div>
+    </div>
+
+
+    <script>
+        let fileSystem = { "root": { "type": "folder", "children": {} } };
+        let currentPath = ["root"];
+        let activeFilePath = null;
+        let fileContents = {};
+        let openFilePaths = [];
+        let commandHistory = [];
+        let historyIndex = -1;
+        let isPreviewVisible = false;
+
+        const editorElement = document.getElementById('editor');
+        const previewArea = document.getElementById('preview-area');
+        const previewPanel = document.getElementById('preview-panel');
+        const resizer = document.getElementById('resizer');
+        const editorArea = document.getElementById('editor-area');
+        const terminalInput = document.getElementById('terminal-input');
+        const fileListElement = document.getElementById("file-list");
+        const fileTabsElement = document.getElementById("file-tabs");
+        const terminalDisplay = document.getElementById("terminal");
+        const runSideButton = document.getElementById("run-side-button");
+        const storagePrefix = "advancedWebEditor_";
+
+        function loadStateFromLocalStorage() {
+            console.log("Attempting to load state from localStorage...");
+            let stateLoaded = false;
+            try {
+                const fsData = localStorage.getItem(storagePrefix + "fileSystem");
+                fileSystem = fsData ? JSON.parse(fsData) : { "root": { "type": "folder", "children": {} } };
+                const pathData = localStorage.getItem(storagePrefix + "currentPath");
+                currentPath = pathData ? JSON.parse(pathData) : ["root"];
+                const contentsData = localStorage.getItem(storagePrefix + "fileContents");
+                fileContents = contentsData ? JSON.parse(contentsData) : {};
+                const historyData = localStorage.getItem(storagePrefix + "commandHistory");
+                commandHistory = historyData ? JSON.parse(historyData) : [];
+                historyIndex = commandHistory.length; 
+                const openFilesData = localStorage.getItem(storagePrefix + "openFilePaths");
+                openFilePaths = openFilesData ? JSON.parse(openFilesData) : [];
+                const activePathData = localStorage.getItem(storagePrefix + "activeFilePath");
+                
+                if (activePathData && openFilePaths.includes(activePathData)) {
+                    activeFilePath = activePathData;
+                } else if (openFilePaths.length > 0) {
+                    activeFilePath = openFilePaths[0];
+                } else {
+                    activeFilePath = null;
+                }
+
+                if (!fileSystem.root || typeof fileSystem.root.children !== 'object') {
+                     console.warn("Loaded fileSystem seems corrupted, resetting.");
+                     throw new Error("Invalid fileSystem structure."); 
+                }
+                stateLoaded = true;
+                console.log("State loaded successfully from localStorage.");
+
+            } catch (error) {
+                console.error("Error loading state from localStorage:", error);
+                fileSystem = { "root": { "type": "folder", "children": {} } };
+                currentPath = ["root"];
+                activeFilePath = null;
+                fileContents = {};
+                openFilePaths = [];
+                commandHistory = [];
+                historyIndex = -1;
+                try {
+                    localStorage.removeItem(storagePrefix + "fileSystem");
+                    localStorage.removeItem(storagePrefix + "currentPath");
+                    localStorage.removeItem(storagePrefix + "activeFilePath");
+                    localStorage.removeItem(storagePrefix + "fileContents");
+                    localStorage.removeItem(storagePrefix + "commandHistory");
+                    localStorage.removeItem(storagePrefix + "openFilePaths");
+                    console.log("Cleared potentially corrupted localStorage items.");
+                } catch (clearError) {
+                     console.error("Error clearing localStorage items:", clearError);
+                }
+                setTimeout(() => appendTerminalOutput("Error loading saved state. Resetting editor.", "error"), 0);
+                stateLoaded = false;
+            }
+
+            renderFileList();
+            renderFileTabs();
+            updateEditorContent();
+            hidePreviewPanel(); 
+
+            console.log("State loading process complete.");
+        }
+
+        function saveStateToLocalStorage() {
+            if (activeFilePath && editorElement) {
+                 fileContents[activeFilePath] = editorElement.value;
+            }
+            try {
+                localStorage.setItem(storagePrefix + "fileSystem", JSON.stringify(fileSystem));
+                localStorage.setItem(storagePrefix + "currentPath", JSON.stringify(currentPath));
+                localStorage.setItem(storagePrefix + "activeFilePath", activeFilePath || "");
+                localStorage.setItem(storagePrefix + "fileContents", JSON.stringify(fileContents));
+                localStorage.setItem(storagePrefix + "commandHistory", JSON.stringify(commandHistory));
+                localStorage.setItem(storagePrefix + "openFilePaths", JSON.stringify(openFilePaths));
+            } catch (error) {
+                console.error("Error saving state to localStorage:", error);
+                if (error.name === 'QuotaExceededError') {
+                     appendTerminalOutput("Error: Storage quota exceeded. Cannot save state.", "error");
+                } else {
+                     appendTerminalOutput("Error saving editor state.", "error");
+                }
+            }
+        }
+
+        function getFolder(fs, path) {
+            let current = fs.root;
+            if (!current) return null;
+            for (let i = 1; i < path.length; i++) {
+                const dir = path[i];
+                if (current && current.children && current.children[dir] && current.children[dir].type === 'folder') {
+                    current = current.children[dir];
+                } else { return null; } 
+            }
+            return current;
+        }
+        function getFullPath(pathArray, name) { return [...pathArray, name].join("/"); }
+        function getBasePath(fullPath) { return fullPath.split('/').slice(0, -1); }
+        function getFileName(fullPath) { return fullPath.split('/').pop(); }
+        function isValidFileName(name) { return name && name.trim() && !name.includes("/") && !name.includes("\\"); }
+
+        function renderFileList() {
+            fileListElement.innerHTML = "";
+            const currentFolder = getFolder(fileSystem, currentPath);
+            if (!currentFolder) {
+                console.error("RenderFileList Error: Could not get folder for path", currentPath);
+                appendTerminalOutput(`Error: Invalid path ${currentPath.join('/')}. Resetting to root.`, "error");
+                currentPath = ["root"];
+                if (!fileSystem.root) { fileSystem.root = { type: "folder", children: {} }; console.warn("Filesystem root was missing, re-initialized."); }
+                renderFileList(); return;
+            }
+            
+            if (currentPath.length > 1) { 
+                const parentItem = document.createElement("li");
+                parentItem.textContent = ".."; parentItem.classList.add("type-folder");
+                parentItem.onclick = () => { currentPath.pop(); renderFileList(); saveStateToLocalStorage(); };
+                fileListElement.appendChild(parentItem);
+            }
+
+            const children = currentFolder.children || {};
+            
+            const sortedItems = Object.entries(children).sort(([nameA, dataA], [nameB, dataB]) => {
+                if (dataA.type === dataB.type) { return nameA.localeCompare(nameB); }
+                return dataA.type === 'folder' ? -1 : 1;
+            });
+            
+             for (const [name, itemData] of sortedItems) { 
+                const itemElement = document.createElement("li");
+                itemElement.textContent = name;
+                itemElement.dataset.itemName = name; itemElement.dataset.itemType = itemData.type;
+                itemElement.classList.add(`type-${itemData.type}`);
+                 const fullItemPath = getFullPath(currentPath, name);
+                if (itemData.type === 'file' && fullItemPath === activeFilePath) { itemElement.classList.add("active-file"); }
+                itemElement.onclick = () => {
+                    if (itemData.type === "folder") { currentPath.push(name); renderFileList(); }
+                    else { openOrSwitchToFile(fullItemPath); }
+                    saveStateToLocalStorage();
+                };
+                fileListElement.appendChild(itemElement);
+            }
+            document.getElementById("current-path").textContent = "Path: /" + currentPath.join("/");
+        }
+
+        function renderFileTabs() {
+            fileTabsElement.innerHTML = "";
+            openFilePaths.forEach(filePath => {
+                const tabElement = document.createElement("li"); const fileName = getFileName(filePath);
+                tabElement.textContent = fileName; tabElement.setAttribute("data-filename", filePath);
+                if (filePath === activeFilePath) { tabElement.classList.add("active-tab"); }
+                tabElement.onclick = (event) => {
+                     if (event.target === tabElement || event.target.textContent === fileName) {
+                        openOrSwitchToFile(filePath); saveStateToLocalStorage(); 
+                    }
+                };
+                const closeBtn = document.createElement("span"); 
+                closeBtn.textContent = "×"; closeBtn.classList.add("tab-close-btn"); closeBtn.title = `Close ${fileName}`;
+                closeBtn.onclick = (event) => { event.stopPropagation(); closeTab(filePath); saveStateToLocalStorage(); }; 
+                tabElement.appendChild(closeBtn); fileTabsElement.appendChild(tabElement);
+             });
+             const activeTabElement = fileTabsElement.querySelector('.active-tab');
+             if (activeTabElement) { activeTabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }
+        }
+
+        function updateEditorContent() {
+            if (activeFilePath && fileContents.hasOwnProperty(activeFilePath)) {
+                editorElement.value = fileContents[activeFilePath];
+                editorElement.disabled = false;
+                if (isPreviewVisible) { updatePreviewPanel(); }
+            } else {
+                editorElement.value = ""; 
+                editorElement.disabled = true;
+                 if (isPreviewVisible) { previewPanel.srcdoc = ""; }
+            }
+            renderFileList();
+        }
+
+        function openOrSwitchToFile(filePath) {
+            if (activeFilePath && editorElement) { fileContents[activeFilePath] = editorElement.value; }
+            const pathParts = filePath.split('/'); const fileName = pathParts.pop();
+            const folderPath = pathParts.length > 0 ? pathParts : ["root"];
+            const parentFolder = getFolder(fileSystem, folderPath);
+            if (!parentFolder || !parentFolder.children[fileName] || parentFolder.children[fileName].type !== 'file') {
+                 console.error(`File not found in filesystem: ${filePath}`);
+                 appendTerminalOutput(`Error: File ${filePath} not found.`, "error");
+                 const index = openFilePaths.indexOf(filePath); if (index > -1) { openFilePaths.splice(index, 1); renderFileTabs(); }
+                 return;
+            }
+            if (!openFilePaths.includes(filePath)) { openFilePaths.push(filePath); }
+            activeFilePath = filePath;
+            renderFileTabs();
+            updateEditorContent();
+        }
+        function closeTab(filePathToClose) {
+            const index = openFilePaths.indexOf(filePathToClose);
+            if (index > -1) {
+                if (filePathToClose === activeFilePath && editorElement) { fileContents[filePathToClose] = editorElement.value; }
+                openFilePaths.splice(index, 1);
+                if (activeFilePath === filePathToClose) {
+                    activeFilePath = openFilePaths.length > 0 ? openFilePaths[Math.max(0, index - 1)] : null;
+                }
+                renderFileTabs();
+                updateEditorContent(); 
+            }
+        }
+        function showCreateFilePrompt() { document.getElementById("create-file-input").style.display = "flex"; document.getElementById("create-folder-input").style.display = "none"; document.getElementById("new-file-name").focus(); }
+        function showCreateFolderPrompt() { document.getElementById("create-folder-input").style.display = "flex"; document.getElementById("create-file-input").style.display = "none"; document.getElementById("new-folder-name").focus(); }
+        
+        function handleCreateInput(event, type) {
+             if (event.key === 'Enter') {
+                 event.preventDefault(); 
+                 if (type === 'file') {
+                     createFile();
+                 } else if (type === 'folder') {
+                     createFolder();
+                 }
+             }
+        }
+
+        function createFile() {
+            const fileNameInput = document.getElementById("new-file-name");
+            const fileName = fileNameInput.value.trim();
+            if (isValidFileName(fileName)) {
+                const currentFolder = getFolder(fileSystem, currentPath);
+                const newFilePath = getFullPath(currentPath, fileName);
+                if (!currentFolder) { appendTerminalOutput("Error: Cannot create file in invalid path.", "error"); return; }
+                if (currentFolder.children[fileName]) { appendTerminalOutput(`Error: '${fileName}' already exists.`, "error"); }
+                else {
+                    currentFolder.children[fileName] = { type: "file" };
+                    fileContents[newFilePath] = "";
+                    renderFileList(); openOrSwitchToFile(newFilePath);
+                    document.getElementById("create-file-input").style.display = "none"; fileNameInput.value = "";
+                    saveStateToLocalStorage();
+                }
+            } else { appendTerminalOutput("Invalid file name.", "error"); }
+        }
+        function createFolder() {
+            const folderNameInput = document.getElementById("new-folder-name");
+            const folderName = folderNameInput.value.trim();
+            if (isValidFileName(folderName)) {
+                const currentFolder = getFolder(fileSystem, currentPath);
+                if (!currentFolder) { appendTerminalOutput("Error: Cannot create folder in invalid path.", "error"); return; }
+                if (currentFolder.children[folderName]) { appendTerminalOutput(`Error: '${folderName}' already exists.`, "error"); }
+                else {
+                    currentFolder.children[folderName] = { type: "folder", children: {} };
+                    renderFileList();
+                    document.getElementById("create-folder-input").style.display = "none"; folderNameInput.value = "";
+                    saveStateToLocalStorage(); 
+                }
+            } else { appendTerminalOutput("Invalid folder name.", "error"); }
+        }
+
+        function showDownloadPrompt() {
+            const currentFolder = getFolder(fileSystem, currentPath);
+            if (!currentFolder) {
+                appendTerminalOutput("Error: Cannot access current directory.", "error");
+                return;
+            }
+            const filesInDir = Object.entries(currentFolder.children)
+                                    .filter(([name, data]) => data.type === 'file')
+                                    .map(([name]) => name);
+
+            if (filesInDir.length === 0) {
+                appendTerminalOutput("No files in the current directory to download.", "info");
+                return;
+            }
+
+            let promptMessage = "Select a file to download:\n";
+            filesInDir.forEach((fileName, index) => {
+                promptMessage += `${index + 1}: ${fileName}\n`;
+            });
+            promptMessage += "\nEnter the number of the file:";
+
+            const choice = prompt(promptMessage);
+            if (choice === null) {
+                appendTerminalOutput("Download cancelled.", "info");
+                return; 
+            }
+
+            const fileIndex = parseInt(choice, 10) - 1;
+
+            if (isNaN(fileIndex) || fileIndex < 0 || fileIndex >= filesInDir.length) {
+                appendTerminalOutput("Invalid selection.", "error");
+            } else {
+                const selectedFileName = filesInDir[fileIndex];
+                const selectedFilePath = getFullPath(currentPath, selectedFileName);
+                downloadFile(selectedFilePath);
+            }
+        }
+
+        function downloadFile(filePath) {
+             let content;
+             if (filePath === activeFilePath) {
+                 content = editorElement.value;
+                 fileContents[filePath] = content; 
+             } else {
+                 content = fileContents[filePath];
+             }
+             
+             if (content === undefined) {
+                  appendTerminalOutput(`Error: Could not find content for ${getFileName(filePath)}`, "error");
+                  return;
+             }
+
+             const element = document.createElement('a');
+             element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+             element.setAttribute('download', getFileName(filePath));
+             element.style.display = 'none'; document.body.appendChild(element); element.click(); document.body.removeChild(element);
+             appendTerminalOutput(`Downloading ${getFileName(filePath)}...`, "success");
+        }
+
+        function handleFileInput(event) { 
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileName = file.name;
+                    if (!isValidFileName(fileName)) { appendTerminalOutput(`Invalid file name for upload: ${fileName}.`, "error"); event.target.value = ''; return; }
+                    const currentFolder = getFolder(fileSystem, currentPath);
+                    const newFilePath = getFullPath(currentPath, fileName);
+                    if (!currentFolder) { appendTerminalOutput("Error: Cannot upload file to invalid path.", "error"); event.target.value = ''; return; }
+                    let overwriting = false;
+                    if (currentFolder.children[fileName]) {
+                        if (!confirm(`File "${fileName}" already exists. Overwrite?`)) { event.target.value = ''; return; }
+                        overwriting = true;
+                    }
+                    fileContents[newFilePath] = e.target.result;
+                    if (!overwriting) { currentFolder.children[fileName] = { type: "file" }; renderFileList(); }
+                    openOrSwitchToFile(newFilePath);
+                    saveStateToLocalStorage(); 
+                    event.target.value = '';
+                 };
+                reader.onerror = (err) => { console.error("Error reading file:", err); appendTerminalOutput(`Error reading file: ${file.name}`, "error"); event.target.value = ''; };
+                reader.readAsText(file);
+            }
+        }
+
+        function runCodeNewTab() { 
+            if (!activeFilePath) { appendTerminalOutput("No active file to run.", "info"); return; }
+            const code = editorElement.value;
+            if (code.trim().toLowerCase().startsWith('<!doctype html>') || code.trim().toLowerCase().startsWith('<html')) {
+                 try { const blob = new Blob([code], { type: 'text/html' });
+                 const url = URL.createObjectURL(blob); const newWindow = window.open(url, '_blank'); if (!newWindow) { appendTerminalOutput("Popup blocked?", "error"); URL.revokeObjectURL(url); return; } 
+                 setTimeout(() => URL.revokeObjectURL(url), 10000); appendTerminalOutput(`Executed ${getFileName(activeFilePath)} in new tab.`, "success"); } catch (e) { console.error("Error running code:", e); appendTerminalOutput(`Error: ${e.message}`, "error"); }
+            } else { appendTerminalOutput("Run (New Tab) executes HTML/JS.", "info"); }
+        }
+        function updatePreviewPanel() { 
+            if (!activeFilePath) { previewPanel.srcdoc = "<html><body>No file selected</body></html>"; return; }
+            const code = editorElement.value; previewPanel.srcdoc = code;
+        }
+        function showPreviewPanel() { 
+            previewArea.style.display = 'flex';
+            resizer.style.display = 'block'; isPreviewVisible = true;
+            runSideButton.textContent = "Hide Side Preview"; updatePreviewPanel();
+        }
+        function hidePreviewPanel() { 
+            previewArea.style.display = 'none';
+            resizer.style.display = 'none';
+            editorArea.style.flex = '1 1 auto'; isPreviewVisible = false;
+            runSideButton.textContent = "Run Side-by-Side";
+        }
+        function toggleSidePreview() { if (isPreviewVisible) { hidePreviewPanel(); } else { showPreviewPanel(); } }
+
+        let isResizing = false;
+        let startX, startEditorWidth, startPreviewWidth;
+        resizer.addEventListener('mousedown', (e) => { isResizing = true; startX = e.clientX; startEditorWidth = editorArea.offsetWidth; startPreviewWidth = isPreviewVisible ? previewArea.offsetWidth : 0; document.body.style.userSelect = 'none'; document.body.style.pointerEvents = 'none'; document.addEventListener('mousemove', handleMouseMove); document.addEventListener('mouseup', handleMouseUp); });
+        function handleMouseMove(e) { if (!isResizing) return; const deltaX = e.clientX - startX; let newEditorWidth = startEditorWidth + deltaX; let newPreviewWidth = startPreviewWidth - deltaX; const minWidth = 100; if (newEditorWidth < minWidth) { newEditorWidth = minWidth; newPreviewWidth = startEditorWidth + startPreviewWidth - minWidth; } if (newPreviewWidth < minWidth) { newPreviewWidth = minWidth; newEditorWidth = startEditorWidth + startPreviewWidth - minWidth; } const totalWidth = editorArea.parentElement.offsetWidth - resizer.offsetWidth; if (totalWidth > 0) { editorArea.style.flex = `0 0 ${newEditorWidth}px`; previewArea.style.flex = `0 0 ${newPreviewWidth}px`; } }
+        function handleMouseUp() { if (isResizing) { isResizing = false; document.body.style.userSelect = ''; document.body.style.pointerEvents = ''; document.removeEventListener('mousemove', handleMouseMove); document.removeEventListener('mouseup', handleMouseUp); } }
+
+        function appendTerminalOutput(text, type = "normal") { 
+            const line = document.createElement("div");
+            line.textContent = text;
+            if (type === "error") { line.style.color = "#dc3545"; } else if (type === "success") { line.style.color = "#28a745"; } else if (type === "info") { line.style.color = "#007bff"; }
+            terminalDisplay.appendChild(line); terminalDisplay.scrollTop = terminalDisplay.scrollHeight;
+        }
+        function handleTerminalInput(event) { 
+             if (event.key === "Enter") {
+                 const command = terminalInput.value.trim();
+                 terminalInput.value = "";
+                 if (command) {
+                     appendTerminalOutput(`> ${command}`);
+                     commandHistory.push(command); historyIndex = commandHistory.length;
+                     const parts = command.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+                     const cmd = parts[0];
+                     const args = parts.slice(1).map(arg => arg.replace(/^"|"$/g, ''));
+                     executeCommand(cmd, args); 
+                 }
+                 event.preventDefault();
+             } else if (event.key === "ArrowUp") { 
+                 if (commandHistory.length > 0 && historyIndex > 0) { historyIndex--; terminalInput.value = commandHistory[historyIndex]; setTimeout(() => terminalInput.selectionStart = terminalInput.selectionEnd = terminalInput.value.length, 0); } event.preventDefault();
+             } else if (event.key === "ArrowDown") { 
+                 if (historyIndex < commandHistory.length - 1) { historyIndex++; terminalInput.value = commandHistory[historyIndex]; } else if (historyIndex === commandHistory.length - 1) { historyIndex++; terminalInput.value = ""; } event.preventDefault();
+             }
+        }
+        function executeCommand(cmd, args) {
+             const currentFolder = getFolder(fileSystem, currentPath);
+             let stateChanged = false; 
+             if (!currentFolder) { appendTerminalOutput("Error: Current directory invalid. Resetting.", "error"); currentPath = ["root"]; renderFileList(); stateChanged = true;  }
+
+             switch (cmd) {
+                 case "pwd":  appendTerminalOutput("/" + currentPath.join("/")); break;
+                 case "ls":  const i = Object.keys(currentFolder.children||{}); appendTerminalOutput(i.length === 0 ? "(empty)" : i.map(n => (currentFolder.children[n].type === 'folder' ? `${n}/` : n)).join("  ")); break;
+                 case "cd": 
+                     let pathChanged = false;
+                     if (args.length === 0 || args[0] === '~' || args[0] === '/') { if(currentPath.length > 1) {currentPath = ["root"]; pathChanged = true;} }
+                     else if (args[0] === "..") { if (currentPath.length > 1) { currentPath.pop(); pathChanged = true; } else { appendTerminalOutput("Already at root.", "info"); } }
+                     else { let tP; if (args[0].startsWith('/')) { tP = ["root", ...args[0].substring(1).split('/').filter(p => p)]; } else { tP = [...currentPath, ...args[0].split('/').filter(p => p)]; } const tF = getFolder(fileSystem, tP); if (tF && tF.type === 'folder') { currentPath = tP; pathChanged = true; } else { appendTerminalOutput(`cd: no such file or directory: ${args[0]}`, "error"); } }
+                     if (pathChanged) { renderFileList(); stateChanged = true; }
+                     break;
+                 case "mkdir": 
+                     if(args.length === 1 && isValidFileName(args[0])) { if(!currentFolder.children[args[0]]) { currentFolder.children[args[0]] = {type:"folder", children:{}}; renderFileList(); appendTerminalOutput(`Created dir: ${args[0]}`, "success"); stateChanged = true; } else { appendTerminalOutput(`mkdir: exists: ${args[0]}`, "error"); } } else { appendTerminalOutput("Usage: mkdir <name>", "error"); }
+                     break;
+                 case "touch": 
+                      if(args.length === 1 && isValidFileName(args[0])) { const p = getFullPath(currentPath, args[0]); if(!currentFolder.children[args[0]]) { currentFolder.children[args[0]] = {type:"file"}; fileContents[p]=""; renderFileList(); appendTerminalOutput(`Created file: ${args[0]}`, "success"); stateChanged = true; } else { appendTerminalOutput(`touch: exists: ${args[0]}`, "info"); } } else { appendTerminalOutput("Usage: touch <name>", "error"); }
+                     break;
+                 case "rm": 
+                      if (args.length >= 1) { let r = false, t = args[0]; if (args[0] === '-r' || args[0] === '-rf') { if(args.length<2){appendTerminalOutput("Usage: rm [-r] <name>"); return;} r=true; t=args[1]; } const tp = getFullPath(currentPath, t); if (currentFolder.children[t]) { const it=currentFolder.children[t].type; if(it==="file"){ if(openFilePaths.includes(tp)){closeTab(tp); } delete fileContents[tp]; delete currentFolder.children[t]; renderFileList(); appendTerminalOutput(`Removed file: ${t}`, "success"); stateChanged = true; } else if(it==="folder"){ if(r){ function delRec(pa){const fo=getFolder(fileSystem, pa); if(!fo)return; Object.keys(fo.children).forEach(cn=>{const cp=getFullPath(pa,cn); if(fo.children[cn].type==='file'){if(openFilePaths.includes(cp)){closeTab(cp); } delete fileContents[cp];} else if(fo.children[cn].type==='folder'){delRec([...pa,cn]);}});} delRec(tp.split('/')); delete currentFolder.children[t]; renderFileList(); appendTerminalOutput(`Removed dir: ${t}`, "success"); stateChanged = true; } else { appendTerminalOutput(`rm: is a directory: ${t}. Use -r`, "error"); } } } else { appendTerminalOutput(`rm: not found: ${t}`, "error"); } } else { appendTerminalOutput("Usage: rm [-r] <name>"); }
+                     break;
+                 case "cat": 
+                     if(args.length === 1) { const fp = getFullPath(currentPath, args[0]); if (currentFolder.children[args[0]] && currentFolder.children[args[0]].type === 'file') { let c = fileContents[fp]; if (fp === activeFilePath) { c = editorElement.value; fileContents[fp] = c; } appendTerminalOutput(c || "(empty)"); } else if (currentFolder.children[args[0]]) { appendTerminalOutput(`cat: is a directory: ${args[0]}`, "error"); } else { appendTerminalOutput(`cat: not found: ${args[0]}`, "error"); } } else { appendTerminalOutput("Usage: cat <file>"); }
+                     break;
+                 case "mv": 
+                      if(args.length === 2){ const sN=args[0], dN=args[1], sP=getFullPath(currentPath,sN), dP=getFullPath(currentPath,dN); if(!currentFolder.children[sN]){appendTerminalOutput(`mv: not found: ${sN}`, "error"); return;} if(currentFolder.children[dN]){appendTerminalOutput(`mv: exists: ${dN}`, "error"); return;} if(!isValidFileName(dN)){appendTerminalOutput(`mv: invalid name: ${dN}`, "error"); return;} currentFolder.children[dN]=currentFolder.children[sN]; delete currentFolder.children[sN]; if(currentFolder.children[dN].type==='file'){if(fileContents.hasOwnProperty(sP)){fileContents[dP]=fileContents[sP]; delete fileContents[sP];} const oi=openFilePaths.indexOf(sP); if(oi>-1){openFilePaths[oi]=dP;} if(activeFilePath===sP){activeFilePath=dP;}} renderFileList(); renderFileTabs(); appendTerminalOutput(`Moved '${sN}' to '${dN}'`, "success"); stateChanged = true; } else { appendTerminalOutput("Usage: mv <src> <dest>"); }
+                     break;
+                 case "cp": 
+                      if(args.length === 2){ const sN=args[0], dN=args[1], sP=getFullPath(currentPath,sN), dP=getFullPath(currentPath,dN); if(!currentFolder.children[sN]){appendTerminalOutput(`cp: not found: ${sN}`, "error"); return;} if(currentFolder.children[sN].type==='folder'){appendTerminalOutput(`cp: omitting directory: ${sN}`, "error"); return;} if(currentFolder.children[dN]){appendTerminalOutput(`cp: exists: ${dN}`, "error"); return;} if(!isValidFileName(dN)){appendTerminalOutput(`cp: invalid name: ${dN}`, "error"); return;} currentFolder.children[dN]=JSON.parse(JSON.stringify(currentFolder.children[sN])); if(currentFolder.children[dN].type==='file'){let ctc=fileContents[sP]; if(sP===activeFilePath){ctc=editorElement.value; fileContents[sP]=ctc;} fileContents[dP]=ctc;} renderFileList(); appendTerminalOutput(`Copied '${sN}' to '${dN}'`, "success"); stateChanged = true; } else { appendTerminalOutput("Usage: cp <src> <dest>"); }
+                     break;
+                 case "history":  commandHistory.forEach((c, i) => appendTerminalOutput(`${i + 1}  ${c}`)); break;
+                 case "clear":  terminalDisplay.innerHTML = ""; break;
+                 case "help":  appendTerminalOutput("Commands: pwd, ls, cd [..|dir|/], mkdir, touch, rm [-r], cat, mv, cp, history, clear, help"); break;
+                 default: appendTerminalOutput(`Command not found: ${cmd}. Type 'help'.`);
+             }
+
+             if (stateChanged) {
+                 saveStateToLocalStorage();
+             }
+        }
+
+        window.onload = () => {
+            loadStateFromLocalStorage(); 
+            window.addEventListener('beforeunload', saveStateToLocalStorage);
+            setTimeout(() => {
+                 appendTerminalOutput("Welcome! Editor state is now saved using LocalStorage.", "info");
+                 appendTerminalOutput("Type 'help' for terminal commands.", "info");
+            }, 0);
+        };
+
+    </script>
+</body>
+</html>
