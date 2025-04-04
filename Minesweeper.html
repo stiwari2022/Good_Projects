@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #9ca3af;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: #d1d5db;
+            user-select: none;
+            border-radius: 2px;
+            transition: background-color 0.1s ease;
+        }
+
+        .cell:hover:not(.revealed):not(.flagged) {
+             background-color: #e5e7eb;
+        }
+
+        .cell.revealed {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+            cursor: default;
+        }
+
+        .cell.flagged {
+            background-color: #fef9c3;
+        }
+
+        .cell.mine-hit {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .cell.mine {
+             background-color: #f3f4f6;
+        }
+
+        .cell[data-count="1"] { color: #2563eb; }
+        .cell[data-count="2"] { color: #16a34a; }
+        .cell[data-count="3"] { color: #dc2626; }
+        .cell[data-count="4"] { color: #4f46e5; }
+        .cell[data-count="5"] { color: #9333ea; }
+        .cell[data-count="6"] { color: #0ea5e9; }
+        .cell[data-count="7"] { color: #ca8a04; }
+        .cell[data-count="8"] { color: #4b5563; }
+
+        #grid {
+             -webkit-touch-callout: none;
+             -webkit-user-select: none;
+             -khtml-user-select: none;
+             -moz-user-select: none;
+             -ms-user-select: none;
+             user-select: none;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="start-screen" class="text-center p-6 bg-white rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Minesweeper</h1>
+        <p class="mb-4 text-gray-600">Select Difficulty:</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+            <button data-difficulty="easy" class="difficulty-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow">Easy (8x10, 10 Mines)</button>
+            <button data-difficulty="medium" class="difficulty-btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow">Medium (11x13, 25 Mines)</button>
+            <button data-difficulty="hard" class="difficulty-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow">Hard (15x17, 40 Mines)</button>
+        </div>
+        <div id="leaderboard-display" class="mt-4 p-4 border border-gray-300 rounded-md bg-gray-50">
+            <h2 class="text-xl font-semibold mb-2 text-gray-700">Leaderboard (Top 3 Times)</h2>
+            <ul class="text-left space-y-1 text-gray-600">
+                <li>Easy: <span id="leaderboard-easy">N/A</span></li>
+                <li>Medium: <span id="leaderboard-medium">N/A</span></li>
+                <li>Hard: <span id="leaderboard-hard">N/A</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden flex flex-col items-center mt-4">
+        <div id="game-info" class="flex flex-wrap justify-between items-center w-full max-w-max bg-white p-3 rounded-lg shadow-md mb-4 gap-x-4 gap-y-2">
+            <div class="text-lg font-medium text-gray-700">Flags: <span id="flags-count" class="font-bold">0</span></div>
+            <div class="text-lg font-medium text-gray-700">Time: <span id="timer" class="font-bold">0s</span></div>
+            <button id="reset-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md transition duration-150 ease-in-out text-sm shadow">Reset</button>
+            <button id="back-to-menu-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-md transition duration-150 ease-in-out text-sm shadow">Menu</button>
+        </div>
+        <div id="grid" class="grid gap-0.5 bg-gray-400 p-1 rounded-md shadow-inner" style="display: grid;">
+            </div>
+    </div>
+
+    <div id="message-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <p id="message-text" class="text-xl font-semibold mb-4"></p>
+            <button id="message-reset-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow">Play Again</button>
+             <button id="message-menu-btn" class="ml-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition duration-150 ease-in-out shadow">Back to Menu</button>
+        </div>
+    </div>
+
+    <script>
+        const startScreen = document.getElementById('start-screen');
+        const gameContainer = document.getElementById('game-container');
+        const gridElement = document.getElementById('grid');
+        const flagsCountElement = document.getElementById('flags-count');
+        const timerElement = document.getElementById('timer');
+        const resetBtn = document.getElementById('reset-btn');
+        const backToMenuBtn = document.getElementById('back-to-menu-btn');
+        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+        const messageOverlay = document.getElementById('message-overlay');
+        const messageText = document.getElementById('message-text');
+        const messageResetBtn = document.getElementById('message-reset-btn');
+        const messageMenuBtn = document.getElementById('message-menu-btn');
+        const leaderboardDisplay = {
+            easy: document.getElementById('leaderboard-easy'),
+            medium: document.getElementById('leaderboard-medium'),
+            hard: document.getElementById('leaderboard-hard'),
+        };
+
+        const difficulties = {
+            easy: { rows: 8, cols: 10, mines: 10 },
+            medium: { rows: 11, cols: 13, mines: 25 },
+            hard: { rows: 15, cols: 17, mines: 40 },
+        };
+
+        let rows, cols, mineCount;
+        let grid = [];
+        let flagsLeft;
+        let revealedCount;
+        let timerInterval;
+        let timeElapsed;
+        let gameOver;
+        let firstClick;
+        let currentDifficulty;
+        let leaderboard = { easy: [], medium: [], hard: [] };
+
+        const LEADERBOARD_KEY = 'minesweeper_leaderboard_top3';
+
+        function init() {
+            loadLeaderboard();
+            updateLeaderboardDisplay();
+
+            difficultyButtons.forEach(button => {
+                button.addEventListener('click', () => startGame(button.dataset.difficulty));
+            });
+            resetBtn.addEventListener('click', resetGame);
+            backToMenuBtn.addEventListener('click', backToMenu);
+            messageResetBtn.addEventListener('click', resetGame);
+            messageMenuBtn.addEventListener('click', backToMenu);
+
+            gridElement.addEventListener('contextmenu', e => e.preventDefault());
+        }
+
+        function startGame(difficulty) {
+            currentDifficulty = difficulty;
+            const settings = difficulties[difficulty];
+            rows = settings.rows;
+            cols = settings.cols;
+            mineCount = settings.mines;
+
+            flagsLeft = mineCount;
+            revealedCount = 0;
+            timeElapsed = 0;
+            gameOver = false;
+            firstClick = true;
+
+            updateFlagCount();
+            updateTimerDisplay(); // Update display to 0s initially
+            clearInterval(timerInterval); // Clear previous timer if any
+
+            createGridData();
+            renderGrid();
+
+            startScreen.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+            messageOverlay.classList.add('hidden');
+        }
+
+        function resetGame() {
+             startGame(currentDifficulty);
+        }
+
+        function backToMenu() {
+            clearInterval(timerInterval);
+            gameContainer.classList.add('hidden');
+            messageOverlay.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            updateLeaderboardDisplay();
+        }
+
+        function createGridData() {
+            grid = Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => ({
+                isMine: false,
+                isRevealed: false,
+                isFlagged: false,
+                adjacentMines: 0,
+            })));
+        }
+
+        function placeMines(firstRow, firstCol) {
+            let minesPlaced = 0;
+            while (minesPlaced < mineCount) {
+                const r = Math.floor(Math.random() * rows);
+                const c = Math.floor(Math.random() * cols);
+
+                let isSafeZone = false;
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (r === firstRow + dr && c === firstCol + dc) {
+                            isSafeZone = true;
+                            break;
+                        }
+                    }
+                    if (isSafeZone) break;
+                }
+
+                if (!grid[r][c].isMine && !isSafeZone) {
+                    grid[r][c].isMine = true;
+                    minesPlaced++;
+                }
+            }
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (!grid[r][c].isMine) {
+                        grid[r][c].adjacentMines = countAdjacentMines(r, c);
+                    }
+                }
+            }
+        }
+
+        function countAdjacentMines(row, col) {
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const nr = row + dr;
+                    const nc = col + dc;
+                    if (isValid(nr, nc) && grid[nr][nc].isMine) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        function isValid(row, col) {
+            return row >= 0 && row < rows && col >= 0 && col < cols;
+        }
+
+        function renderGrid() {
+            gridElement.innerHTML = '';
+            gridElement.style.gridTemplateColumns = `repeat(${cols}, 30px)`;
+            gridElement.style.gridTemplateRows = `repeat(${rows}, 30px)`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    cell.addEventListener('click', handleLeftClick);
+                    cell.addEventListener('contextmenu', handleRightClick);
+
+                    updateCellAppearance(cell, r, c);
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+       function updateCellAppearance(cell, r, c) {
+            const cellData = grid[r][c];
+
+            cell.classList.remove('revealed', 'flagged', 'mine', 'mine-hit');
+            cell.removeAttribute('data-count');
+            cell.textContent = '';
+
+            if (gameOver && cellData.isMine && !cellData.isFlagged) {
+                cell.classList.add('mine');
+                cell.textContent = '💣';
+            } else if (gameOver && !cellData.isMine && cellData.isFlagged) {
+                 cell.textContent = '❌';
+                 cell.classList.add('revealed');
+            } else if (cellData.isFlagged) {
+                cell.classList.add('flagged');
+                cell.textContent = '🚩';
+            } else if (cellData.isRevealed) {
+                cell.classList.add('revealed');
+                if (cellData.isMine) {
+                    cell.classList.add('mine-hit');
+                    cell.textContent = '💥';
+                } else if (cellData.adjacentMines > 0) {
+                    cell.textContent = cellData.adjacentMines;
+                    cell.dataset.count = cellData.adjacentMines;
+                }
+            }
+        }
+
+        function handleLeftClick(event) {
+            if (gameOver) return;
+
+            const cell = event.target;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            const cellData = grid[row][col];
+
+            if (cellData.isRevealed || cellData.isFlagged) {
+                return;
+            }
+
+            if (firstClick) {
+                placeMines(row, col);
+                startTimer(); // Start timer on first click
+                firstClick = false;
+                 const clickedCellElement = gridElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                 if (clickedCellElement) {
+                    revealCell(row, col);
+                    if (!gameOver) {
+                         checkWinCondition();
+                    }
+                    return;
+                 }
+            }
+
+            revealCell(row, col);
+
+            if (!gameOver) {
+                 checkWinCondition();
+            }
+        }
+
+        function handleRightClick(event) {
+            event.preventDefault();
+            if (gameOver) return;
+
+            const cell = event.target;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            const cellData = grid[row][col];
+
+            if (cellData.isRevealed) {
+                return;
+            }
+
+            toggleFlag(row, col);
+        }
+
+        function revealCell(row, col) {
+            if (!isValid(row, col) || grid[row][col].isRevealed || grid[row][col].isFlagged || gameOver) {
+                return;
+            }
+
+            const cellData = grid[row][col];
+            cellData.isRevealed = true;
+            revealedCount++;
+
+            const cellElement = gridElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+             if (!cellElement) return;
+
+            updateCellAppearance(cellElement, row, col);
+
+            if (cellData.isMine) {
+                endGame(false, row, col);
+                return;
+            }
+
+            if (cellData.adjacentMines === 0) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr === 0 && dc === 0) continue;
+                        revealCell(row + dr, col + dc);
+                    }
+                }
+            }
+        }
+
+        function toggleFlag(row, col) {
+            const cellData = grid[row][col];
+            if (cellData.isRevealed) return;
+
+            if (cellData.isFlagged) {
+                cellData.isFlagged = false;
+                flagsLeft++;
+            } else {
+                if (flagsLeft > 0) {
+                    cellData.isFlagged = true;
+                    flagsLeft--;
+                } else {
+                    return;
+                }
+            }
+
+            updateFlagCount();
+            const cellElement = gridElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+             if (cellElement) {
+                updateCellAppearance(cellElement, row, col);
+             }
+        }
+
+        function checkWinCondition() {
+            const totalNonMineCells = rows * cols - mineCount;
+            if (revealedCount === totalNonMineCells) {
+                endGame(true);
+            }
+        }
+
+        function endGame(won, hitRow = -1, hitCol = -1) {
+            gameOver = true;
+            clearInterval(timerInterval);
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cellElement = gridElement.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                    if (cellElement) {
+                         const cellData = grid[r][c];
+                         if (cellData.isMine) {
+                             if (!won) {
+                                 cellData.isRevealed = true;
+                                 if (r === hitRow && c === hitCol) {
+                                 } else if (cellData.isFlagged) {
+                                 }
+                             } else {
+                                 if (!cellData.isFlagged) {
+                                     cellData.isFlagged = true;
+                                     flagsLeft--;
+                                 }
+                             }
+                         } else if (cellData.isFlagged) {
+                             if (!won) {
+                                cellData.isRevealed = true;
+                             }
+                         }
+                        updateCellAppearance(cellElement, r, c);
+                    }
+                }
+            }
+            updateFlagCount();
+
+             if (won) {
+                updateLeaderboard(currentDifficulty, timeElapsed);
+                saveLeaderboard();
+                messageText.textContent = `🎉 You Win! Time: ${timeElapsed}s 🎉`;
+             } else {
+                 messageText.textContent = `💥 Boom! You hit a mine! 💥`;
+             }
+
+            messageOverlay.classList.remove('hidden');
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeElapsed = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            timerElement.textContent = `${timeElapsed}s`;
+        }
+
+        function updateFlagCount() {
+            flagsCountElement.textContent = flagsLeft;
+        }
+
+        function loadLeaderboard() {
+            const storedLeaderboard = localStorage.getItem(LEADERBOARD_KEY);
+            if (storedLeaderboard) {
+                try {
+                    const parsedLeaderboard = JSON.parse(storedLeaderboard);
+                    leaderboard.easy = Array.isArray(parsedLeaderboard.easy) ? parsedLeaderboard.easy : [];
+                    leaderboard.medium = Array.isArray(parsedLeaderboard.medium) ? parsedLeaderboard.medium : [];
+                    leaderboard.hard = Array.isArray(parsedLeaderboard.hard) ? parsedLeaderboard.hard : [];
+                    leaderboard.easy = leaderboard.easy.sort((a, b) => a - b).slice(0, 3);
+                    leaderboard.medium = leaderboard.medium.sort((a, b) => a - b).slice(0, 3);
+                    leaderboard.hard = leaderboard.hard.sort((a, b) => a - b).slice(0, 3);
+
+                } catch (e) {
+                     console.error("Failed to parse leaderboard:", e);
+                     leaderboard = { easy: [], medium: [], hard: [] };
+                     localStorage.removeItem(LEADERBOARD_KEY);
+                }
+            } else {
+                 leaderboard = { easy: [], medium: [], hard: [] };
+            }
+        }
+
+        function saveLeaderboard() {
+            try {
+                localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+            } catch (e) {
+                console.error("Failed to save leaderboard:", e);
+            }
+        }
+
+        function updateLeaderboard(difficulty, time) {
+            const scores = leaderboard[difficulty];
+            scores.push(time);
+            scores.sort((a, b) => a - b);
+            leaderboard[difficulty] = scores.slice(0, 3);
+            console.log(`Updated leaderboard for ${difficulty}:`, leaderboard[difficulty]);
+        }
+
+        function updateLeaderboardDisplay() {
+            for (const difficulty in leaderboard) {
+                const scores = leaderboard[difficulty];
+                const displayElement = leaderboardDisplay[difficulty];
+                if (scores.length === 0) {
+                    displayElement.textContent = 'N/A';
+                } else {
+                    displayElement.textContent = scores.map(time => `${time}s`).join(', ');
+                }
+            }
+        }
+
+        init();
+
+    </script>
+
+</body>
+</html>
