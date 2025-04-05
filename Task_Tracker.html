@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task & Schedule Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            width: 500px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            margin: 0 auto;
+            position: relative;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+        .calendar-day { text-align: center; padding: 8px 4px; border-radius: 4px; font-size: 0.875rem; min-height: 40px; position: relative; }
+        .calendar-day-header { font-weight: 600; color: #6b7280; padding: 4px; }
+        .calendar-day.other-month { color: #d1d5db; cursor: default; }
+        .calendar-day.today { background-color: #bfdbfe; font-weight: 600; }
+        .calendar-day.has-task .task-dot { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background-color: #ef4444; border-radius: 50%; }
+        .calendar-day.has-schedule .schedule-dot { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%; }
+        .calendar-day.has-task.has-schedule .task-dot { left: calc(50% - 4px); }
+        .calendar-day.has-task.has-schedule .schedule-dot { left: calc(50% + 4px); }
+        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; border-radius: 8px; }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+
+        #notification-area {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            max-width: 90%;
+            text-align: center;
+            cursor: pointer;
+        }
+        .notification-success { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .notification-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .notification-info { background-color: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
+
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-4">
+
+    <div id="notification-area"></div>
+
+    <div class="flex border-b border-gray-200 mb-4">
+        <button data-tab="tasks" class="tab-button flex-1 py-2 px-4 text-center font-medium text-gray-600 hover:text-blue-600 focus:outline-none focus:text-blue-600 focus:border-blue-600 border-b-2 border-transparent">Tasks</button>
+        <button data-tab="schedule" class="tab-button flex-1 py-2 px-4 text-center font-medium text-gray-600 hover:text-blue-600 focus:outline-none focus:text-blue-600 focus:border-blue-600 border-b-2 border-transparent">Schedule</button>
+    </div>
+
+    <div class="flex justify-center gap-4 mb-4">
+        <button id="download-data-button" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 text-sm font-medium">Download Data</button>
+        <button id="upload-data-button" class="bg-gray-500 text-white py-1 px-3 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 text-sm font-medium">Upload Data</button>
+        <input type="file" id="upload-file-input" accept=".json" class="hidden">
+    </div>
+
+    <div id="tasks-tab" class="tab-content space-y-4">
+        <h2 class="text-xl font-semibold text-gray-700">Manage Tasks</h2>
+        <div class="p-4 bg-white rounded-lg shadow border border-gray-100 space-y-3">
+            <h3 class="text-lg font-medium">Add New Task</h3>
+            <div>
+                <label for="task-name" class="block text-sm font-medium text-gray-700 mb-1">Task Name</label>
+                <input type="text" id="task-name" placeholder="Enter task description" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="task-due-date" class="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
+                    <input type="date" id="task-due-date" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="task-tag" class="block text-sm font-medium text-gray-700 mb-1">Tag (Optional)</label>
+                    <div class="flex">
+                        <select id="task-tag-select" class="flex-grow p-2 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">No Tag</option>
+                        </select>
+                        <input type="text" id="new-tag-name" placeholder="New Tag" class="p-2 border border-l-0 border-gray-300 focus:ring-blue-500 focus:border-blue-500 w-24">
+                        <button id="add-tag-button" class="bg-blue-500 text-white px-3 rounded-r-md hover:bg-blue-600 text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+            <button id="add-task-button" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium">Add Task</button>
+        </div>
+        <div class="flex justify-between items-center">
+             <h3 class="text-lg font-medium">View Tasks</h3>
+             <div>
+                 <label for="tag-filter" class="text-sm font-medium text-gray-700 mr-2">Filter by Tag:</label>
+                 <select id="tag-filter" class="p-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                     <option value="all">All Tasks</option>
+                 </select>
+             </div>
+        </div>
+        <div id="task-list-container" class="p-4 bg-white rounded-lg shadow border border-gray-100 space-y-2 min-h-[100px]">
+            <p id="no-tasks-message" class="text-gray-500 text-center">No tasks yet.</p>
+        </div>
+        <div class="p-4 bg-white rounded-lg shadow border border-gray-100 space-y-3 mb-6">
+            <h3 class="text-lg font-medium mb-2">Task Due Date Calendar</h3>
+            <div class="flex justify-between items-center mb-2">
+                <button id="task-cal-prev-month" class="p-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">&lt; Prev</button>
+                <h4 id="task-cal-month-year" class="font-semibold">Month Year</h4>
+                <button id="task-cal-next-month" class="p-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Next &gt;</button>
+            </div>
+            <div id="task-calendar" class="calendar"></div>
+             <div class="text-xs text-gray-500 mt-2 flex items-center justify-center gap-2">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-red-500 rounded-full inline-block"></span> Task Due</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="schedule-tab" class="tab-content space-y-4">
+        <h2 class="text-xl font-semibold text-gray-700">Manage Schedule</h2>
+        <div class="p-4 bg-white rounded-lg shadow border border-gray-100 space-y-3">
+             <h3 class="text-lg font-medium">Add Schedule Item</h3>
+             <div>
+                 <label for="schedule-name" class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                 <input type="text" id="schedule-name" placeholder="Enter schedule item" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+             </div>
+             <div class="grid grid-cols-2 gap-3">
+                 <div>
+                     <label for="schedule-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                     <input type="date" id="schedule-date" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                 </div>
+                 <div>
+                     <label for="schedule-time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                     <input type="time" id="schedule-time" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                 </div>
+             </div>
+              <div>
+                 <label for="schedule-recurrence" class="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+                 <select id="schedule-recurrence" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                     <option value="none">None</option>
+                     <option value="daily">Daily</option>
+                     <option value="weekly">Weekly (Same day)</option>
+                     <option value="monthly">Monthly (Same date)</option>
+                 </select>
+             </div>
+             <button id="add-schedule-button" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 font-medium">Add Schedule Item</button>
+        </div>
+        <div class="p-4 bg-white rounded-lg shadow border border-gray-100 space-y-3">
+            <h3 class="text-lg font-medium mb-2">Schedule Calendar</h3>
+             <div class="flex justify-between items-center mb-2">
+                <button id="schedule-cal-prev-month" class="p-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">&lt; Prev</button>
+                <h4 id="schedule-cal-month-year" class="font-semibold">Month Year</h4>
+                <button id="schedule-cal-next-month" class="p-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Next &gt;</button>
+            </div>
+            <div id="schedule-calendar" class="calendar"></div>
+             <div class="text-xs text-gray-500 mt-2 flex items-center justify-center gap-2">
+                 <span class="flex items-center gap-1"><span class="w-2 h-2 bg-green-500 rounded-full inline-block"></span> Scheduled Item</span>
+             </div>
+        </div>
+        <div id="schedule-list-container" class="p-4 bg-white rounded-lg shadow border border-gray-100 space-y-2 min-h-[50px] mb-6">
+             <h4 class="font-medium text-center text-gray-600">Scheduled Items for Selected Day</h4>
+             <p id="no-schedule-message" class="text-gray-500 text-center">Click a day on the calendar.</p>
+        </div>
+    </div>
+
+    <div id="day-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-modal-button">&times;</span>
+            <h3 id="modal-date" class="text-lg font-semibold mb-3">Date</h3>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="font-medium text-blue-600">Tasks Due:</h4>
+                    <ul id="modal-tasks-list" class="list-disc list-inside text-sm ml-4 space-y-1"></ul>
+                    <p id="modal-no-tasks" class="text-sm text-gray-500">No tasks due today.</p>
+                </div>
+                 <div>
+                    <h4 class="font-medium text-green-600">Scheduled Items:</h4>
+                    <ul id="modal-schedule-list" class="list-disc list-inside text-sm ml-4 space-y-1"></ul>
+                     <p id="modal-no-schedule" class="text-sm text-gray-500">No items scheduled today.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <br>
+    <br>
+
+    <script>
+        const taskNameInput = document.getElementById('task-name');
+        const taskDueDateInput = document.getElementById('task-due-date');
+        const taskTagSelect = document.getElementById('task-tag-select');
+        const newTagNameInput = document.getElementById('new-tag-name');
+        const addTagButton = document.getElementById('add-tag-button');
+        const addTaskButton = document.getElementById('add-task-button');
+        const tagFilterSelect = document.getElementById('tag-filter');
+        const taskListContainer = document.getElementById('task-list-container');
+        const noTasksMessage = document.getElementById('no-tasks-message');
+        const scheduleNameInput = document.getElementById('schedule-name');
+        const scheduleDateInput = document.getElementById('schedule-date');
+        const scheduleTimeInput = document.getElementById('schedule-time');
+        const scheduleRecurrenceSelect = document.getElementById('schedule-recurrence');
+        const addScheduleButton = document.getElementById('add-schedule-button');
+        const scheduleListContainer = document.getElementById('schedule-list-container');
+        const noScheduleMessage = document.getElementById('no-schedule-message');
+        const tabs = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const taskCalendarEl = document.getElementById('task-calendar');
+        const taskCalMonthYearEl = document.getElementById('task-cal-month-year');
+        const taskCalPrevMonthBtn = document.getElementById('task-cal-prev-month');
+        const taskCalNextMonthBtn = document.getElementById('task-cal-next-month');
+        const scheduleCalendarEl = document.getElementById('schedule-calendar');
+        const scheduleCalMonthYearEl = document.getElementById('schedule-cal-month-year');
+        const scheduleCalPrevMonthBtn = document.getElementById('schedule-cal-prev-month');
+        const scheduleCalNextMonthBtn = document.getElementById('schedule-cal-next-month');
+        const dayDetailsModal = document.getElementById('day-details-modal');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const modalDateEl = document.getElementById('modal-date');
+        const modalTasksList = document.getElementById('modal-tasks-list');
+        const modalNoTasks = document.getElementById('modal-no-tasks');
+        const modalScheduleList = document.getElementById('modal-schedule-list');
+        const modalNoSchedule = document.getElementById('modal-no-schedule');
+        const downloadDataButton = document.getElementById('download-data-button');
+        const uploadDataButton = document.getElementById('upload-data-button');
+        const uploadFileInput = document.getElementById('upload-file-input');
+        const notificationArea = document.getElementById('notification-area');
+
+        let tasks = [];
+        let tags = [];
+        let schedules = [];
+        let currentTaskCalDate = new Date();
+        let currentScheduleCalDate = new Date();
+        let selectedScheduleDayDate = null;
+        let notificationTimeout = null;
+        let notificationClickListener = null; // Store the click listener
+
+        const STORAGE_KEYS = {
+            TASKS: 'tasks',
+            TAGS: 'tags',
+            SCHEDULES: 'schedules'
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setupTabs();
+            renderTags();
+            renderTasks();
+            renderTaskCalendar();
+            renderScheduleCalendar();
+            setupEventListeners();
+            activateTab('tasks');
+        });
+
+        // Function to hide the notification and clean up listeners/timeouts
+        function hideNotification() {
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+                notificationTimeout = null;
+            }
+            if (notificationClickListener) {
+                window.removeEventListener('click', notificationClickListener);
+                notificationClickListener = null;
+            }
+            if (notificationArea) {
+                notificationArea.style.display = 'none';
+            }
+        }
+
+        // Function to show notification
+        function showNotification(message, type = 'info', duration = 5000) {
+            // Hide any existing notification immediately
+            hideNotification();
+
+            notificationArea.textContent = message;
+            notificationArea.className = ''; // Clear previous classes
+            notificationArea.classList.add(`notification-${type}`);
+            notificationArea.style.display = 'block';
+
+            // Define the click listener function
+            notificationClickListener = function(event) {
+                // Optional: Check if the click is outside the notification itself
+                // if (notificationArea && !notificationArea.contains(event.target)) {
+                     hideNotification();
+                // }
+            };
+
+            // Add the click listener to the window
+            // Use setTimeout to ensure the listener isn't triggered by the click that might have opened the notification
+            setTimeout(() => {
+                 window.addEventListener('click', notificationClickListener);
+            }, 0);
+
+
+            // Set timeout to hide after duration
+            notificationTimeout = setTimeout(() => {
+                hideNotification(); // Use the cleanup function
+            }, duration);
+        }
+
+
+        function loadData() {
+            tasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || '[]');
+            tags = JSON.parse(localStorage.getItem(STORAGE_KEYS.TAGS) || '[]');
+            schedules = JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULES) || '[]');
+        }
+
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function setupEventListeners() {
+            addTagButton.addEventListener('click', handleAddTag);
+            addTaskButton.addEventListener('click', handleAddTask);
+            tagFilterSelect.addEventListener('change', renderTasks);
+            taskListContainer.addEventListener('click', handleDeleteTask);
+            addScheduleButton.addEventListener('click', handleAddSchedule);
+            scheduleListContainer.addEventListener('click', handleDeleteSchedule);
+            taskCalPrevMonthBtn.addEventListener('click', () => changeTaskCalendarMonth(-1));
+            taskCalNextMonthBtn.addEventListener('click', () => changeTaskCalendarMonth(1));
+            scheduleCalPrevMonthBtn.addEventListener('click', () => changeScheduleCalendarMonth(-1));
+            scheduleCalNextMonthBtn.addEventListener('click', () => changeScheduleCalendarMonth(1));
+            taskCalendarEl.addEventListener('click', handleCalendarDayClick);
+            scheduleCalendarEl.addEventListener('click', handleCalendarDayClick);
+            closeModalButton.addEventListener('click', () => dayDetailsModal.style.display = 'none');
+            window.addEventListener('click', (event) => {
+                 if (event.target == dayDetailsModal) {
+                    dayDetailsModal.style.display = 'none';
+                }
+                 // Close notification on click outside modal as well
+                 if (notificationClickListener && notificationArea && notificationArea.style.display !== 'none' && !notificationArea.contains(event.target) && !dayDetailsModal.contains(event.target)) {
+                    // We check if the click listener exists and the notification is visible
+                    // And ensure the click wasn't on the notification itself or the modal
+                    // hideNotification(); // The main listener handles this now
+                 }
+            });
+            downloadDataButton.addEventListener('click', handleDownloadData);
+            uploadDataButton.addEventListener('click', () => uploadFileInput.click());
+            uploadFileInput.addEventListener('change', handleFileUpload);
+        }
+
+        function setupTabs() {
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    activateTab(tab.dataset.tab);
+                });
+            });
+        }
+
+        function activateTab(tabId) {
+            tabs.forEach(tab => {
+                const isActive = tab.dataset.tab === tabId;
+                tab.classList.toggle('border-blue-600', isActive);
+                tab.classList.toggle('text-blue-600', isActive);
+                tab.classList.toggle('border-transparent', !isActive);
+                tab.classList.toggle('text-gray-600', !isActive);
+            });
+            tabContents.forEach(content => {
+                content.classList.toggle('active', content.id === `${tabId}-tab`);
+            });
+            if (tabId === 'tasks') renderTaskCalendar();
+            if (tabId === 'schedule') renderScheduleCalendar();
+        }
+
+        function handleAddTag() {
+            const newTagName = newTagNameInput.value.trim();
+            if (newTagName && !tags.includes(newTagName)) {
+                tags.push(newTagName);
+                saveData(STORAGE_KEYS.TAGS, tags);
+                renderTags();
+                newTagNameInput.value = '';
+                showNotification('Tag added successfully.', 'success');
+            } else if (tags.includes(newTagName)) {
+                 showNotification('Tag already exists.', 'error');
+                 newTagNameInput.value = '';
+            } else {
+                 showNotification('Please enter a tag name.', 'error');
+            }
+        }
+
+        function renderTags() {
+            taskTagSelect.innerHTML = '<option value="">No Tag</option>';
+            tagFilterSelect.innerHTML = '<option value="all">All Tasks</option>';
+            tags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                taskTagSelect.appendChild(option.cloneNode(true));
+                tagFilterSelect.appendChild(option);
+            });
+        }
+
+        function handleAddTask() {
+            const name = taskNameInput.value.trim();
+            const dueDate = taskDueDateInput.value;
+            const tag = taskTagSelect.value;
+
+            if (!name) {
+                 showNotification('Task name cannot be empty.', 'error');
+                 return;
+            }
+
+            const newTask = {
+                id: Date.now().toString(),
+                name: name,
+                dueDate: dueDate || null,
+                tag: tag || null,
+                completed: false
+            };
+
+            tasks.push(newTask);
+            saveData(STORAGE_KEYS.TASKS, tasks);
+            renderTasks();
+            renderTaskCalendar();
+            showNotification('Task added successfully.', 'success');
+
+            taskNameInput.value = '';
+            taskDueDateInput.value = '';
+            taskTagSelect.value = '';
+        }
+
+        function handleDeleteTask(event) {
+            if (event.target.classList.contains('delete-task-button')) {
+                const taskId = event.target.dataset.taskId;
+                tasks = tasks.filter(task => task.id !== taskId);
+                saveData(STORAGE_KEYS.TASKS, tasks);
+                renderTasks();
+                renderTaskCalendar();
+                showNotification('Task deleted.', 'info');
+            }
+        }
+
+        function renderTasks() {
+            const filter = tagFilterSelect.value;
+            const filteredTasks = filter === 'all' ? tasks : tasks.filter(task => task.tag === filter);
+
+            taskListContainer.innerHTML = '';
+
+            if (filteredTasks.length === 0) {
+                 const p = document.createElement('p');
+                 p.id = 'no-tasks-message';
+                 p.className = 'text-gray-500 text-center';
+                 p.textContent = filter === 'all' ? 'No tasks yet.' : 'No tasks with this tag.';
+                 taskListContainer.appendChild(p);
+
+            } else {
+                 filteredTasks.sort((a, b) => {
+                    if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+                    if (a.dueDate) return -1;
+                    if (b.dueDate) return 1;
+                    return 0;
+                 });
+
+                filteredTasks.forEach(task => {
+                    const taskElement = document.createElement('div');
+                    taskElement.className = 'flex justify-between items-center p-2 border-b border-gray-100';
+                    taskElement.innerHTML = `
+                        <div class="flex-grow mr-2">
+                            <span class="block text-sm ${task.completed ? 'line-through text-gray-400' : ''}">${task.name}</span>
+                            ${task.dueDate ? `<span class="text-xs text-gray-500">Due: ${new Date(task.dueDate + 'T00:00:00').toLocaleDateString()}</span>` : ''}
+                            ${task.tag ? `<span class="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">${task.tag}</span>` : ''}
+                        </div>
+                        <button data-task-id="${task.id}" class="delete-task-button text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                    `;
+                    taskListContainer.appendChild(taskElement);
+                });
+            }
+        }
+
+        function handleAddSchedule() {
+             const name = scheduleNameInput.value.trim();
+             const date = scheduleDateInput.value;
+             const time = scheduleTimeInput.value;
+             const recurrence = scheduleRecurrenceSelect.value;
+
+             if (!name || !date || !time) {
+                 showNotification('Please fill in schedule item name, date, and time.', 'error');
+                 return;
+             }
+
+             const newSchedule = {
+                 id: Date.now().toString(),
+                 name: name,
+                 dateTime: `${date}T${time}`,
+                 recurrence: recurrence,
+             };
+
+             schedules.push(newSchedule);
+             saveData(STORAGE_KEYS.SCHEDULES, schedules);
+             renderScheduleCalendar();
+             showNotification('Schedule item added.', 'success');
+
+             if (selectedScheduleDayDate && selectedScheduleDayDate === date) {
+                 renderScheduleListForDay(date);
+             }
+
+             scheduleNameInput.value = '';
+             scheduleDateInput.value = '';
+             scheduleTimeInput.value = '';
+             scheduleRecurrenceSelect.value = 'none';
+        }
+
+         function handleDeleteSchedule(event) {
+            if (event.target.classList.contains('delete-schedule-button')) {
+                const scheduleId = event.target.dataset.scheduleId;
+                schedules = schedules.filter(item => item.id !== scheduleId);
+                saveData(STORAGE_KEYS.SCHEDULES, schedules);
+                renderScheduleCalendar();
+                showNotification('Schedule item deleted.', 'info');
+
+                 if (selectedScheduleDayDate) {
+                     renderScheduleListForDay(selectedScheduleDayDate);
+                 } else {
+                     scheduleListContainer.innerHTML = '<h4 class="font-medium text-center text-gray-600">Scheduled Items for Selected Day</h4><p id="no-schedule-message" class="text-gray-500 text-center">Click a day on the calendar.</p>';
+                 }
+            }
+        }
+
+        function getScheduledItemsForDate(targetDateStr) {
+            const targetDate = new Date(targetDateStr + 'T00:00:00');
+            const items = [];
+
+            schedules.forEach(item => {
+                const itemStartDate = new Date(item.dateTime);
+                const itemDateStr = itemStartDate.toISOString().split('T')[0];
+                let match = false;
+
+                if (item.recurrence === 'none' && itemDateStr === targetDateStr) {
+                    match = true;
+                } else if (item.recurrence === 'daily' && itemStartDate <= targetDate) {
+                     match = true;
+                } else if (item.recurrence === 'weekly' && itemStartDate <= targetDate && itemStartDate.getDay() === targetDate.getDay()) {
+                     match = true;
+                } else if (item.recurrence === 'monthly' && itemStartDate <= targetDate && itemStartDate.getDate() === targetDate.getDate()) {
+                     match = true;
+                }
+
+                if (match) {
+                    items.push({ ...item, displayDateTime: `${targetDateStr}T${item.dateTime.split('T')[1]}` });
+                }
+            });
+
+             items.sort((a, b) => new Date(a.displayDateTime) - new Date(b.displayDateTime));
+            return items;
+        }
+
+         function renderScheduleListForDay(dateStr) {
+             selectedScheduleDayDate = dateStr;
+             const items = getScheduledItemsForDate(dateStr);
+             scheduleListContainer.innerHTML = '';
+
+             const title = document.createElement('h4');
+             title.className = 'font-medium text-center text-gray-600 mb-2';
+             const displayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+             title.textContent = `Schedule for ${displayDate}`;
+             scheduleListContainer.appendChild(title);
+
+             if (items.length === 0) {
+                 const noItemsMsg = document.createElement('p');
+                 noItemsMsg.id = 'no-schedule-message';
+                 noItemsMsg.className = 'text-gray-500 text-center';
+                 noItemsMsg.textContent = 'No items scheduled for this day.';
+                 scheduleListContainer.appendChild(noItemsMsg);
+             } else {
+                 items.forEach(item => {
+                     const itemElement = document.createElement('div');
+                     itemElement.className = 'flex justify-between items-center p-1.5 border-b border-gray-100';
+                     const itemTime = new Date(item.displayDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     const recurrenceInfo = item.recurrence !== 'none' ? `(${item.recurrence})` : '';
+                     itemElement.innerHTML = `
+                        <div class="flex-grow mr-2">
+                            <span class="block text-sm">${item.name}</span>
+                            <span class="text-xs text-gray-500">${itemTime} ${recurrenceInfo}</span>
+                         </div>
+                        <button data-schedule-id="${item.id}" class="delete-schedule-button text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                    `;
+                     scheduleListContainer.appendChild(itemElement);
+                 });
+             }
+         }
+
+        function changeTaskCalendarMonth(monthOffset) {
+            currentTaskCalDate.setMonth(currentTaskCalDate.getMonth() + monthOffset);
+            renderTaskCalendar();
+        }
+         function changeScheduleCalendarMonth(monthOffset) {
+            currentScheduleCalDate.setMonth(currentScheduleCalDate.getMonth() + monthOffset);
+            renderScheduleCalendar();
+             scheduleListContainer.innerHTML = '<h4 class="font-medium text-center text-gray-600">Scheduled Items for Selected Day</h4><p id="no-schedule-message" class="text-gray-500 text-center">Click a day on the calendar.</p>';
+             selectedScheduleDayDate = null;
+        }
+
+        function renderTaskCalendar() {
+            renderCalendar(taskCalendarEl, taskCalMonthYearEl, currentTaskCalDate, getTasksForDate, 'task');
+        }
+         function renderScheduleCalendar() {
+             renderCalendar(scheduleCalendarEl, scheduleCalMonthYearEl, currentScheduleCalDate, getScheduledItemsForDate, 'schedule');
+         }
+
+        function renderCalendar(calendarContainer, monthYearEl, dateToDisplay, getDataForDateFn, type) {
+            calendarContainer.innerHTML = '';
+            const year = dateToDisplay.getFullYear();
+            const month = dateToDisplay.getMonth();
+
+            monthYearEl.textContent = dateToDisplay.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+            const firstDayOfMonth = new Date(year, month, 1);
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            const daysInMonth = lastDayOfMonth.getDate();
+            const startDayOfWeek = firstDayOfMonth.getDay();
+
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+
+            const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+             dayHeaders.forEach(day => {
+                 const headerEl = document.createElement('div');
+                 headerEl.className = 'calendar-day-header';
+                 headerEl.textContent = day;
+                 calendarContainer.appendChild(headerEl);
+             });
+
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'calendar-day other-month';
+                calendarContainer.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                const currentDate = new Date(year, month, day);
+                const currentDateStr = currentDate.toISOString().split('T')[0];
+
+                dayCell.className = 'calendar-day cursor-pointer hover:bg-gray-100';
+                dayCell.textContent = day;
+                dayCell.dataset.date = currentDateStr;
+
+                if (currentDateStr === todayStr) { dayCell.classList.add('today'); }
+
+                const itemsForDay = getDataForDateFn(currentDateStr);
+                if (itemsForDay.length > 0) {
+                     dayCell.classList.add(`has-${type}`);
+                     const dot = document.createElement('span'); dot.className = `${type}-dot`; dayCell.appendChild(dot);
+                }
+
+                 const otherType = type === 'task' ? 'schedule' : 'task';
+                 const otherGetDataFn = type === 'task' ? getScheduledItemsForDate : getTasksForDate;
+                 const otherItemsForDay = otherGetDataFn(currentDateStr);
+                 if (otherItemsForDay.length > 0) {
+                     dayCell.classList.add(`has-${otherType}`);
+                     if (!dayCell.querySelector(`.${otherType}-dot`)) {
+                         const otherDot = document.createElement('span'); otherDot.className = `${otherType}-dot`; dayCell.appendChild(otherDot);
+                     }
+                 }
+
+                calendarContainer.appendChild(dayCell);
+            }
+
+            const totalCells = startDayOfWeek + daysInMonth;
+            const remainingCells = (7 - (totalCells % 7)) % 7;
+            for (let i = 0; i < remainingCells; i++) {
+                 const emptyCell = document.createElement('div'); emptyCell.className = 'calendar-day other-month'; calendarContainer.appendChild(emptyCell);
+            }
+        }
+
+        function getTasksForDate(dateStr) {
+            return tasks.filter(task => task.dueDate === dateStr);
+        }
+
+        function handleCalendarDayClick(event) {
+            const dayCell = event.target.closest('.calendar-day');
+            if (dayCell && dayCell.dataset.date && !dayCell.classList.contains('other-month')) {
+                const dateStr = dayCell.dataset.date;
+
+                if (dayCell.closest('#schedule-calendar')) {
+                    renderScheduleListForDay(dateStr);
+                }
+
+                 showDayDetailsModal(dateStr);
+            }
+        }
+
+        function showDayDetailsModal(dateStr) {
+             const date = new Date(dateStr + 'T00:00:00');
+             modalDateEl.textContent = date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+             const tasksForDay = getTasksForDate(dateStr);
+             modalTasksList.innerHTML = '';
+             if (tasksForDay.length > 0) {
+                 modalNoTasks.style.display = 'none';
+                 modalTasksList.style.display = 'block';
+                 tasksForDay.forEach(task => {
+                     const li = document.createElement('li');
+                     li.textContent = task.name;
+                     if (task.tag) {
+                         const tagSpan = document.createElement('span');
+                         tagSpan.className = 'ml-2 text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded';
+                         tagSpan.textContent = task.tag;
+                         li.appendChild(tagSpan);
+                     }
+                     modalTasksList.appendChild(li);
+                 });
+             } else {
+                 modalNoTasks.style.display = 'block';
+                 modalTasksList.style.display = 'none';
+             }
+
+             const scheduleForDay = getScheduledItemsForDate(dateStr);
+             modalScheduleList.innerHTML = '';
+              if (scheduleForDay.length > 0) {
+                 modalNoSchedule.style.display = 'none';
+                 modalScheduleList.style.display = 'block';
+                 scheduleForDay.forEach(item => {
+                     const li = document.createElement('li');
+                     const itemTime = new Date(item.displayDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     const recurrenceInfo = item.recurrence !== 'none' ? `(${item.recurrence})` : '';
+                     li.textContent = `${item.name} at ${itemTime} ${recurrenceInfo}`;
+                     modalScheduleList.appendChild(li);
+                 });
+             } else {
+                 modalNoSchedule.style.display = 'block';
+                 modalScheduleList.style.display = 'none';
+             }
+             dayDetailsModal.style.display = 'block';
+        }
+
+        function handleDownloadData() {
+            const dataToDownload = {
+                tasks: tasks,
+                tags: tags,
+                schedules: schedules
+            };
+            const dataStr = JSON.stringify(dataToDownload, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = 'tracker_data.json';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            URL.revokeObjectURL(url);
+            showNotification('Data download started.', 'info');
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const uploadedData = JSON.parse(e.target.result);
+
+                    if (Array.isArray(uploadedData.tasks) && Array.isArray(uploadedData.tags) && Array.isArray(uploadedData.schedules)) {
+                        tasks = uploadedData.tasks;
+                        tags = uploadedData.tags;
+                        schedules = uploadedData.schedules;
+
+                        saveData(STORAGE_KEYS.TASKS, tasks);
+                        saveData(STORAGE_KEYS.TAGS, tags);
+                        saveData(STORAGE_KEYS.SCHEDULES, schedules);
+
+                        renderTags();
+                        renderTasks();
+                        renderTaskCalendar();
+                        renderScheduleCalendar();
+                        scheduleListContainer.innerHTML = '<h4 class="font-medium text-center text-gray-600">Scheduled Items for Selected Day</h4><p id="no-schedule-message" class="text-gray-500 text-center">Click a day on the calendar.</p>';
+                        selectedScheduleDayDate = null;
+                        activateTab(document.querySelector('.tab-button.border-blue-600')?.dataset.tab || 'tasks');
+
+                        showNotification('Data loaded successfully!', 'success');
+                    } else {
+                        showNotification('Invalid file format. The file must contain "tasks", "tags", and "schedules" arrays.', 'error');
+                    }
+                } catch (error) {
+                    showNotification('Error reading or parsing file: ' + error.message, 'error');
+                } finally {
+                     uploadFileInput.value = '';
+                }
+            };
+            reader.onerror = function() {
+                 showNotification('Error reading file.', 'error');
+                 uploadFileInput.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+    </script>
+</body>
+</html>
