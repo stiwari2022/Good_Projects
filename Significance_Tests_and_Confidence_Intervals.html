@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistical Calculator (Means & Proportions)</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .hidden { display: none; }
+        .form-section { transition: all 0.3s ease-in-out; }
+        .calc-button { transition: background-color 0.3s ease; }
+        .calc-button:hover { background-color: #3b82f6; }
+        #results { border-left: 4px solid #3b82f6; padding-left: 1rem; margin-top: 1.5rem; }
+        label { font-weight: 500; }
+        .condition-warning { color: #eab308; font-size: 0.875rem; margin-top: 0.5rem; }
+        sub { line-height: 0; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md">
+
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">Statistical Calculator</h1>
+        <p class="text-center text-gray-600 mb-6">Perform Significance Tests and Calculate Confidence Intervals for Means and Proportions</p>
+
+        <div class="mb-6">
+            <label class="block text-lg font-semibold text-gray-700 mb-2">Select Calculation Type:</label>
+            <div class="flex space-x-4">
+                <label class="flex items-center space-x-2">
+                    <input type="radio" name="calculationType" value="test" class="form-radio text-blue-600" checked>
+                    <span class="text-gray-700">Significance Test</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="radio" name="calculationType" value="interval" class="form-radio text-blue-600">
+                    <span class="text-gray-700">Confidence Interval</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="formContainer">
+            <div id="significanceTestSection" class="form-section space-y-4 border border-gray-200 p-4 rounded-md">
+                <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">Significance Test Details</h2>
+                <div>
+                    <label for="testType" class="block text-sm font-medium text-gray-700 mb-1">Test Type:</label>
+                    <select id="testType" name="testType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <optgroup label="Tests for Means">
+                            <option value="z_one_mean">One-Sample Z-Test (Mean)</option>
+                            <option value="t_one_mean">One-Sample T-Test (Mean)</option>
+                            <option value="z_two_mean">Two-Sample Z-Test (Means)</option>
+                            <option value="t_two_mean">Two-Sample T-Test (Means)</option>
+                            <option value="t_matched_pairs">Matched Pairs T-Test (Means)</option>
+                        </optgroup>
+                         <optgroup label="Tests for Proportions">
+                            <option value="z_one_prop">One-Sample Z-Test (Proportion)</option>
+                            <option value="z_two_prop">Two-Sample Z-Test (Proportions)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div id="testInputs" class="space-y-3">
+                    </div>
+
+                 <div id="alternativeHypothesisSection">
+                    <label for="alternativeHypothesis" class="block text-sm font-medium text-gray-700 mb-1">Alternative Hypothesis (Hₐ):</label>
+                    <select id="alternativeHypothesis" name="alternativeHypothesis" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <option value="neq">≠ (Two-tailed)</option>
+                        <option value="lt">&lt; (Left-tailed)</option>
+                        <option value="gt">&gt; (Right-tailed)</option>
+                    </select>
+                </div>
+
+                <div id="tTestVarianceOption" class="hidden space-y-1">
+                     <label class="block text-sm font-medium text-gray-700 mb-1">Assume Equal Variances? (For T-Test)</label>
+                     <div class="flex items-center space-x-4">
+                         <label class="flex items-center">
+                             <input type="radio" name="equalVariance" value="yes" class="form-radio text-blue-600">
+                             <span class="ml-2 text-sm text-gray-600">Yes (Pooled)</span>
+                         </label>
+                         <label class="flex items-center">
+                             <input type="radio" name="equalVariance" value="no" class="form-radio text-blue-600" checked>
+                             <span class="ml-2 text-sm text-gray-600">No (Welch's)</span>
+                         </label>
+                     </div>
+                 </div>
+
+                <div>
+                    <label for="alpha" class="block text-sm font-medium text-gray-700 mb-1">Significance Level (α):</label>
+                    <input type="number" id="alpha" name="alpha" value="0.05" step="0.001" min="0.001" max="0.999" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g., 0.05">
+                </div>
+            </div>
+
+            <div id="confidenceIntervalSection" class="form-section space-y-4 border border-gray-200 p-4 rounded-md hidden">
+                 <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">Confidence Interval Details</h2>
+                <div>
+                    <label for="intervalType" class="block text-sm font-medium text-gray-700 mb-1">Interval Type:</label>
+                    <select id="intervalType" name="intervalType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                         <optgroup label="Intervals for Means">
+                            <option value="z_one_mean">One-Sample Z-Interval (Mean)</option>
+                            <option value="t_one_mean">One-Sample T-Interval (Mean)</option>
+                            <option value="z_two_mean">Two-Sample Z-Interval (Means)</option>
+                            <option value="t_two_mean">Two-Sample T-Interval (Means)</option>
+                            <option value="t_matched_pairs">Matched Pairs T-Interval (Means)</option>
+                        </optgroup>
+                         <optgroup label="Intervals for Proportions">
+                            <option value="z_one_prop">One-Sample Z-Interval (Proportion)</option>
+                            <option value="z_two_prop">Two-Sample Z-Interval (Proportions)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                 <div id="intervalInputs" class="space-y-3">
+                    </div>
+
+                 <div id="ciTTestVarianceOption" class="hidden space-y-1">
+                     <label class="block text-sm font-medium text-gray-700 mb-1">Assume Equal Variances? (For T-Interval)</label>
+                     <div class="flex items-center space-x-4">
+                         <label class="flex items-center">
+                             <input type="radio" name="ciEqualVariance" value="yes" class="form-radio text-blue-600">
+                             <span class="ml-2 text-sm text-gray-600">Yes (Pooled)</span>
+                         </label>
+                         <label class="flex items-center">
+                             <input type="radio" name="ciEqualVariance" value="no" class="form-radio text-blue-600" checked>
+                             <span class="ml-2 text-sm text-gray-600">No (Welch's)</span>
+                         </label>
+                     </div>
+                 </div>
+
+                <div>
+                    <label for="confidenceLevel" class="block text-sm font-medium text-gray-700 mb-1">Confidence Level (%):</label>
+                    <input type="number" id="confidenceLevel" name="confidenceLevel" value="95" step="0.1" min="1" max="99.9" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g., 95">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <button id="calculateBtn" class="calc-button inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Calculate
+            </button>
+        </div>
+
+        <div id="resultsContainer" class="mt-8">
+             <h3 class="text-xl font-semibold text-gray-700 mb-3">Results</h3>
+             <div id="results" class="bg-gray-50 p-4 rounded-md min-h-[50px] text-gray-800">
+                 Select your options and click Calculate.
+             </div>
+             <div id="errorMessages" class="mt-4 text-red-600 font-medium">
+                 </div>
+        </div>
+    </div>
+
+    <script>
+        const calculationTypeRadios = document.querySelectorAll('input[name="calculationType"]');
+        const significanceTestSection = document.getElementById('significanceTestSection');
+        const confidenceIntervalSection = document.getElementById('confidenceIntervalSection');
+        const testTypeSelect = document.getElementById('testType');
+        const intervalTypeSelect = document.getElementById('intervalType');
+        const testInputsContainer = document.getElementById('testInputs');
+        const intervalInputsContainer = document.getElementById('intervalInputs');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultsDiv = document.getElementById('results');
+        const errorDiv = document.getElementById('errorMessages');
+        const tTestVarianceOptionDiv = document.getElementById('tTestVarianceOption');
+        const ciTTestVarianceOptionDiv = document.getElementById('ciTTestVarianceOption');
+        const alternativeHypothesisSelect = document.getElementById('alternativeHypothesis');
+        const alternativeHypothesisSection = document.getElementById('alternativeHypothesisSection');
+        const formContainer = document.getElementById('formContainer');
+
+        const STORAGE_KEY = 'statCalcState';
+
+        function createInputField(id, label, placeholder = '', type = 'number', step = 'any', required = true) {
+            const requiredAttr = required ? 'required' : '';
+            return `
+                <div class="grid grid-cols-1 sm:grid-cols-3 items-center gap-2">
+                    <label for="${id}" class="block text-sm font-medium text-gray-700 sm:col-span-1">${label}:</label>
+                    <input type="${type}" id="${id}" name="${id}" step="${step}" ${requiredAttr}
+                           class="stat-input mt-1 sm:mt-0 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm sm:col-span-2"
+                           placeholder="${placeholder}">
+                </div>`;
+        }
+
+        const inputFields = {
+            z_one_mean_test: [
+                createInputField('sampleMean_t', 'Sample Mean (x̄)', 'e.g., 105.5'),
+                createInputField('popStdDev_t', 'Population SD (σ)', 'e.g., 15.2'),
+                createInputField('sampleSize_t', 'Sample Size (n)', 'e.g., 30', 'number', '1'),
+                createInputField('hypothesizedMean_t', 'Hypothesized Mean (μ₀)', 'e.g., 100')
+            ],
+            t_one_mean_test: [
+                createInputField('sampleMean_t', 'Sample Mean (x̄)', 'e.g., 105.5'),
+                createInputField('sampleStdDev_t', 'Sample SD (s)', 'e.g., 14.8'),
+                createInputField('sampleSize_t', 'Sample Size (n)', 'e.g., 30', 'number', '1'),
+                createInputField('hypothesizedMean_t', 'Hypothesized Mean (μ₀)', 'e.g., 100')
+            ],
+            z_two_mean_test: [
+                createInputField('sampleMean1_t', 'Sample 1 Mean (x̄₁)', 'e.g., 110.1'),
+                createInputField('popStdDev1_t', 'Population 1 SD (σ₁)', 'e.g., 12.5'),
+                createInputField('sampleSize1_t', 'Sample 1 Size (n₁)', 'e.g., 40', 'number', '1'),
+                createInputField('sampleMean2_t', 'Sample 2 Mean (x̄₂)', 'e.g., 105.8'),
+                createInputField('popStdDev2_t', 'Population 2 SD (σ₂)', 'e.g., 13.1'),
+                createInputField('sampleSize2_t', 'Sample 2 Size (n₂)', 'e.g., 45', 'number', '1'),
+                createInputField('hypothesizedDiff_t', 'Hypothesized Difference (μ₁ - μ₂)', 'e.g., 0')
+            ],
+            t_two_mean_test: [
+                createInputField('sampleMean1_t', 'Sample 1 Mean (x̄₁)', 'e.g., 110.1'),
+                createInputField('sampleStdDev1_t', 'Sample 1 SD (s₁)', 'e.g., 12.9'),
+                createInputField('sampleSize1_t', 'Sample 1 Size (n₁)', 'e.g., 40', 'number', '1'),
+                createInputField('sampleMean2_t', 'Sample 2 Mean (x̄₂)', 'e.g., 105.8'),
+                createInputField('sampleStdDev2_t', 'Sample 2 SD (s₂)', 'e.g., 13.5'),
+                createInputField('sampleSize2_t', 'Sample 2 Size (n₂)', 'e.g., 45', 'number', '1'),
+                createInputField('hypothesizedDiff_t', 'Hypothesized Difference (μ₁ - μ₂)', 'e.g., 0')
+            ],
+            t_matched_pairs_test: [
+                createInputField('meanDiff_t', 'Mean of Differences (d̄)', 'e.g., 5.3'),
+                createInputField('stdDevDiff_t', 'SD of Differences (s<sub>d</sub>)', 'e.g., 2.1'),
+                createInputField('sampleSizePairs_t', 'Number of Pairs (n)', 'e.g., 25', 'number', '1'),
+                createInputField('hypothesizedMeanDiff_t', 'Hypothesized Mean Diff (μ<sub>d₀</sub>)', 'e.g., 0')
+            ],
+            z_one_prop_test: [
+                createInputField('numSuccesses_t', 'Number of Successes (x)', 'e.g., 85', 'number', '1'),
+                createInputField('sampleSize_t', 'Sample Size (n)', 'e.g., 100', 'number', '1'),
+                createInputField('hypothesizedProp_t', 'Hypothesized Proportion (p₀)', 'e.g., 0.80', 'number', 'any')
+            ],
+            z_two_prop_test: [
+                createInputField('numSuccesses1_t', 'Sample 1 Successes (x₁)', 'e.g., 75', 'number', '1'),
+                createInputField('sampleSize1_t', 'Sample 1 Size (n₁)', 'e.g., 100', 'number', '1'),
+                createInputField('numSuccesses2_t', 'Sample 2 Successes (x₂)', 'e.g., 90', 'number', '1'),
+                createInputField('sampleSize2_t', 'Sample 2 Size (n₂)', 'e.g., 120', 'number', '1'),
+                createInputField('hypothesizedPropDiff_t', 'Hypothesized Difference (p₁ - p₂)', 'e.g., 0', 'number', 'any')
+            ],
+            z_one_mean_interval: [
+                createInputField('sampleMean_ci', 'Sample Mean (x̄)', 'e.g., 105.5'),
+                createInputField('popStdDev_ci', 'Population SD (σ)', 'e.g., 15.2'),
+                createInputField('sampleSize_ci', 'Sample Size (n)', 'e.g., 30', 'number', '1')
+            ],
+            t_one_mean_interval: [
+                createInputField('sampleMean_ci', 'Sample Mean (x̄)', 'e.g., 105.5'),
+                createInputField('sampleStdDev_ci', 'Sample SD (s)', 'e.g., 14.8'),
+                createInputField('sampleSize_ci', 'Sample Size (n)', 'e.g., 30', 'number', '1')
+            ],
+            z_two_mean_interval: [
+                createInputField('sampleMean1_ci', 'Sample 1 Mean (x̄₁)', 'e.g., 110.1'),
+                createInputField('popStdDev1_ci', 'Population 1 SD (σ₁)', 'e.g., 12.5'),
+                createInputField('sampleSize1_ci', 'Sample 1 Size (n₁)', 'e.g., 40', 'number', '1'),
+                createInputField('sampleMean2_ci', 'Sample 2 Mean (x̄₂)', 'e.g., 105.8'),
+                createInputField('popStdDev2_ci', 'Population 2 SD (σ₂)', 'e.g., 13.1'),
+                createInputField('sampleSize2_ci', 'Sample 2 Size (n₂)', 'e.g., 45', 'number', '1')
+            ],
+            t_two_mean_interval: [
+                createInputField('sampleMean1_ci', 'Sample 1 Mean (x̄₁)', 'e.g., 110.1'),
+                createInputField('sampleStdDev1_ci', 'Sample 1 SD (s₁)', 'e.g., 12.9'),
+                createInputField('sampleSize1_ci', 'Sample 1 Size (n₁)', 'e.g., 40', 'number', '1'),
+                createInputField('sampleMean2_ci', 'Sample 2 Mean (x̄₂)', 'e.g., 105.8'),
+                createInputField('sampleStdDev2_ci', 'Sample 2 SD (s₂)', 'e.g., 13.5'),
+                createInputField('sampleSize2_ci', 'Sample 2 Size (n₂)', 'e.g., 45', 'number', '1')
+            ],
+            t_matched_pairs_interval: [
+                createInputField('meanDiff_ci', 'Mean of Differences (d̄)', 'e.g., 5.3'),
+                createInputField('stdDevDiff_ci', 'SD of Differences (s<sub>d</sub>)', 'e.g., 2.1'),
+                createInputField('sampleSizePairs_ci', 'Number of Pairs (n)', 'e.g., 25', 'number', '1')
+            ],
+            z_one_prop_interval: [
+                createInputField('numSuccesses_ci', 'Number of Successes (x)', 'e.g., 85', 'number', '1'),
+                createInputField('sampleSize_ci', 'Sample Size (n)', 'e.g., 100', 'number', '1')
+            ],
+            z_two_prop_interval: [
+                createInputField('numSuccesses1_ci', 'Sample 1 Successes (x₁)', 'e.g., 75', 'number', '1'),
+                createInputField('sampleSize1_ci', 'Sample 1 Size (n₁)', 'e.g., 100', 'number', '1'),
+                createInputField('numSuccesses2_ci', 'Sample 2 Successes (x₂)', 'e.g., 90', 'number', '1'),
+                createInputField('sampleSize2_ci', 'Sample 2 Size (n₂)', 'e.g., 120', 'number', '1')
+            ]
+        };
+
+        function saveState() {
+            const state = {
+                calculationType: document.querySelector('input[name="calculationType"]:checked')?.value,
+                testType: testTypeSelect.value,
+                intervalType: intervalTypeSelect.value,
+                alternativeHypothesis: alternativeHypothesisSelect.value,
+                equalVariance: document.querySelector('input[name="equalVariance"]:checked')?.value,
+                ciEqualVariance: document.querySelector('input[name="ciEqualVariance"]:checked')?.value,
+                alpha: document.getElementById('alpha').value,
+                confidenceLevel: document.getElementById('confidenceLevel').value,
+                inputs: {},
+                resultsHTML: resultsDiv.innerHTML,
+                errorHTML: errorDiv.innerHTML
+            };
+
+            const currentInputsContainer = state.calculationType === 'test' ? testInputsContainer : intervalInputsContainer;
+            currentInputsContainer.querySelectorAll('input.stat-input').forEach(input => {
+                state.inputs[input.id] = input.value;
+            });
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                console.log("State saved:", state);
+            } catch (e) {
+                console.error("Error saving state to localStorage:", e);
+            }
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem(STORAGE_KEY);
+            if (!savedState) {
+                console.log("No saved state found.");
+                updateTestInputs();
+                return;
+            }
+
+            try {
+                const state = JSON.parse(savedState);
+                console.log("Loading saved state:", state);
+
+                if (state.calculationType) {
+                    document.querySelector(`input[name="calculationType"][value="${state.calculationType}"]`).checked = true;
+                     const changeEvent = new Event('change');
+                     document.querySelector(`input[name="calculationType"][value="${state.calculationType}"]`).dispatchEvent(changeEvent);
+                }
+
+                if (state.testType) testTypeSelect.value = state.testType;
+                if (state.intervalType) intervalTypeSelect.value = state.intervalType;
+
+                if (state.alternativeHypothesis) alternativeHypothesisSelect.value = state.alternativeHypothesis;
+                if (state.equalVariance) {
+                    const varianceRadio = document.querySelector(`input[name="equalVariance"][value="${state.equalVariance}"]`);
+                    if (varianceRadio) varianceRadio.checked = true;
+                }
+                 if (state.ciEqualVariance) {
+                    const ciVarianceRadio = document.querySelector(`input[name="ciEqualVariance"][value="${state.ciEqualVariance}"]`);
+                    if (ciVarianceRadio) ciVarianceRadio.checked = true;
+                }
+                if (state.alpha) document.getElementById('alpha').value = state.alpha;
+                if (state.confidenceLevel) document.getElementById('confidenceLevel').value = state.confidenceLevel;
+
+                 if (state.calculationType === 'test') {
+                    updateTestInputs();
+                 } else if (state.calculationType === 'interval') {
+                     updateIntervalInputs();
+                 }
+
+                 setTimeout(() => {
+                    if (state.inputs) {
+                        for (const inputId in state.inputs) {
+                            const inputElement = document.getElementById(inputId);
+                            if (inputElement) {
+                                inputElement.value = state.inputs[inputId];
+                            } else {
+                                console.warn(`Saved input element with ID ${inputId} not found in current DOM.`);
+                            }
+                        }
+                    }
+                     if (state.resultsHTML) resultsDiv.innerHTML = state.resultsHTML;
+                     if (state.errorHTML) errorDiv.innerHTML = state.errorHTML;
+                      console.log("State loaded successfully.");
+                 }, 0);
+
+
+            } catch (e) {
+                console.error("Error loading state from localStorage:", e);
+                localStorage.removeItem(STORAGE_KEY);
+                updateTestInputs();
+            }
+        }
+
+
+        calculationTypeRadios.forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                if (event.target.value === 'test') {
+                    significanceTestSection.classList.remove('hidden');
+                    confidenceIntervalSection.classList.add('hidden');
+                    updateTestInputs();
+                } else {
+                    significanceTestSection.classList.add('hidden');
+                    confidenceIntervalSection.classList.remove('hidden');
+                    updateIntervalInputs();
+                }
+                 clearResults();
+                 saveState();
+            });
+        });
+
+        testTypeSelect.addEventListener('change', () => { updateTestInputs(); saveState(); });
+        intervalTypeSelect.addEventListener('change', () => { updateIntervalInputs(); saveState(); });
+        alternativeHypothesisSelect.addEventListener('change', saveState);
+        document.getElementById('alpha').addEventListener('change', saveState);
+        document.getElementById('confidenceLevel').addEventListener('change', saveState);
+
+        formContainer.addEventListener('change', (event) => {
+            if (event.target.classList.contains('stat-input') || event.target.type === 'radio') {
+                saveState();
+            }
+        });
+
+        calculateBtn.addEventListener('click', handleCalculation);
+
+        function updateTestInputs() {
+            const selectedTest = testTypeSelect.value;
+            testInputsContainer.innerHTML = inputFields[selectedTest + '_test']?.join('') || '<p class="text-red-500">Error: Input fields not defined for this test type.</p>';
+
+            if (selectedTest === 't_two_mean') {
+                 tTestVarianceOptionDiv.classList.remove('hidden');
+            } else {
+                 tTestVarianceOptionDiv.classList.add('hidden');
+            }
+             alternativeHypothesisSection.classList.remove('hidden');
+        }
+
+        function updateIntervalInputs() {
+            const selectedInterval = intervalTypeSelect.value;
+            intervalInputsContainer.innerHTML = inputFields[selectedInterval + '_interval']?.join('') || '<p class="text-red-500">Error: Input fields not defined for this interval type.</p>';
+
+            if (selectedInterval === 't_two_mean') {
+                 ciTTestVarianceOptionDiv.classList.remove('hidden');
+            } else {
+                 ciTTestVarianceOptionDiv.classList.add('hidden');
+            }
+             alternativeHypothesisSection.classList.add('hidden');
+        }
+
+        function handleCalculation() {
+            errorDiv.innerHTML = '';
+            resultsDiv.innerHTML = 'Calculating...';
+
+            try {
+                if (document.querySelector('input[name="calculationType"]:checked').value === 'test') {
+                    performSignificanceTest();
+                } else {
+                    calculateConfidenceInterval();
+                }
+            } catch (error) {
+                 console.error("Calculation Error:", error);
+                 errorDiv.textContent = `Error: ${error.message}. Please check inputs and conditions.`;
+                 resultsDiv.innerHTML = `<p class="text-red-500 font-medium">Calculation Failed</p><p class="text-sm text-red-600">${error.message}</p>`;
+            } finally {
+                saveState();
+            }
+        }
+
+        function getInputValue(id, isTest = true, isInteger = false) {
+            const suffix = isTest ? '_t' : '_ci';
+            const element = document.getElementById(id + suffix);
+            if (!element) {
+                throw new Error(`Input element ID "${id + suffix}" not found`);
+            }
+            const rawValue = element.value;
+            let labelText = element.previousElementSibling?.textContent || id;
+            if (labelText.endsWith(':')) {
+                 labelText = labelText.slice(0, -1).trim();
+            }
+
+            if (rawValue.trim() === '') {
+                throw new Error(`Missing input for ${labelText}`);
+            }
+
+            const value = parseFloat(rawValue);
+
+            if (isNaN(value)) {
+                 throw new Error(`Invalid numeric input for ${labelText}`);
+            }
+             if (isInteger && !Number.isInteger(value)) {
+                 throw new Error(`Input for ${labelText} must be an integer`);
+             }
+              if (isInteger && value < 0) {
+                 throw new Error(`Input for ${labelText} cannot be negative`);
+             }
+            return value;
+        }
+
+         function getSelectValue(id) {
+             const element = document.getElementById(id);
+              if (!element) {
+                 throw new Error(`Select element with ID ${id} not found.`);
+             }
+             return element.value;
+         }
+         function getRadioValue(name) {
+             const element = document.querySelector(`input[name="${name}"]:checked`);
+              if (!element) {
+                 return 'no';
+             }
+             return element.value;
+         }
+
+        function performSignificanceTest() {
+            const testType = testTypeSelect.value;
+            const alternative = getSelectValue('alternativeHypothesis');
+            let result = {};
+
+            const alphaElement = document.getElementById('alpha');
+            if (!alphaElement) throw new Error('Alpha input element not found.');
+            const alpha = parseFloat(alphaElement.value);
+            if (isNaN(alpha) || alpha <= 0 || alpha >= 1) {
+                throw new Error('Invalid Significance Level (α), must be between 0 and 1 (exclusive)');
+            }
+
+            switch (testType) {
+                case 'z_one_mean': result = oneSampleZTestMean(alpha, alternative); break;
+                case 't_one_mean': result = oneSampleTTestMean(alpha, alternative); break;
+                case 'z_two_mean': result = twoSampleZTestMean(alpha, alternative); break;
+                case 't_two_mean':
+                    const assumeEqualVariance = getRadioValue('equalVariance') === 'yes';
+                    result = twoSampleTTestMean(alpha, alternative, assumeEqualVariance);
+                    break;
+                case 't_matched_pairs': result = matchedPairsTTestMean(alpha, alternative); break;
+                case 'z_one_prop': result = oneSampleZTestProp(alpha, alternative); break;
+                case 'z_two_prop': result = twoSampleZTestProp(alpha, alternative); break;
+                default: throw new Error("Invalid test type selected.");
+            }
+            displayTestResults(result, alpha);
+        }
+
+        function oneSampleZTestMean(alpha, alternative) {
+            const xBar = getInputValue('sampleMean');
+            const sigma = getInputValue('popStdDev');
+            const n = getInputValue('sampleSize', true, true);
+            const mu0 = getInputValue('hypothesizedMean');
+            if (n <= 0) throw new Error("Sample size (n) must be positive.");
+            if (sigma <= 0) throw new Error("Population SD (σ) must be positive.");
+            const se = sigma / Math.sqrt(n);
+            const zStat = (xBar - mu0) / se;
+            const pValue = calculatePValue(zStat, alternative, 'normal');
+            return { type: 'mean', test: 'One-Sample Z-Test (Mean)', statistic: zStat.toFixed(4), pValue: pValue.toFixed(5), se: se.toFixed(4), inputs: {xBar, sigma, n, mu0} };
+        }
+
+        function oneSampleTTestMean(alpha, alternative) {
+            const xBar = getInputValue('sampleMean');
+            const s = getInputValue('sampleStdDev');
+            const n = getInputValue('sampleSize', true, true);
+            const mu0 = getInputValue('hypothesizedMean');
+             if (n <= 1) throw new Error("Sample size (n) must be greater than 1 for T-test.");
+             if (s < 0) throw new Error("Sample SD (s) cannot be negative.");
+            const df = n - 1;
+            const se = s / Math.sqrt(n);
+            const tStat = (xBar - mu0) / se;
+            const pValue = calculatePValue(tStat, alternative, 't', df);
+            return { type: 'mean', test: 'One-Sample T-Test (Mean)', statistic: tStat.toFixed(4), pValue: pValue.toFixed(5), df: df, se: se.toFixed(4), inputs: {xBar, s, n, mu0} };
+        }
+
+         function twoSampleZTestMean(alpha, alternative) {
+            const xBar1 = getInputValue('sampleMean1');
+            const sigma1 = getInputValue('popStdDev1');
+            const n1 = getInputValue('sampleSize1', true, true);
+            const xBar2 = getInputValue('sampleMean2');
+            const sigma2 = getInputValue('popStdDev2');
+            const n2 = getInputValue('sampleSize2', true, true);
+            const diff0 = getInputValue('hypothesizedDiff');
+             if (n1 <= 0 || n2 <= 0) throw new Error("Sample sizes (n₁, n₂) must be positive.");
+             if (sigma1 <= 0 || sigma2 <= 0) throw new Error("Population SDs (σ₁, σ₂) must be positive.");
+            const se = Math.sqrt((sigma1**2 / n1) + (sigma2**2 / n2));
+            const zStat = (xBar1 - xBar2 - diff0) / se;
+            const pValue = calculatePValue(zStat, alternative, 'normal');
+            return { type: 'mean', test: 'Two-Sample Z-Test (Means)', statistic: zStat.toFixed(4), pValue: pValue.toFixed(5), se: se.toFixed(4), inputs: {xBar1, sigma1, n1, xBar2, sigma2, n2, diff0} };
+        }
+
+         function twoSampleTTestMean(alpha, alternative, pooled) {
+            const xBar1 = getInputValue('sampleMean1');
+            const s1 = getInputValue('sampleStdDev1');
+            const n1 = getInputValue('sampleSize1', true, true);
+            const xBar2 = getInputValue('sampleMean2');
+            const s2 = getInputValue('sampleStdDev2');
+            const n2 = getInputValue('sampleSize2', true, true);
+            const diff0 = getInputValue('hypothesizedDiff');
+             if (n1 <= 1 || n2 <= 1) throw new Error("Sample sizes (n₁, n₂) must be greater than 1 for T-test.");
+             if (s1 < 0 || s2 < 0) throw new Error("Sample SDs (s₁, s₂) cannot be negative.");
+            let tStat, df, se, testName;
+            if (pooled) {
+                testName = 'Two-Sample Pooled T-Test (Means)';
+                df = n1 + n2 - 2;
+                const sPooledSq = ((n1 - 1) * s1**2 + (n2 - 1) * s2**2) / df;
+                 if (sPooledSq < 0) throw new Error("Calculated pooled variance is negative. Check inputs.");
+                se = Math.sqrt(sPooledSq * (1/n1 + 1/n2));
+            } else {
+                 testName = "Two-Sample Welch's T-Test (Means)";
+                const var1 = s1**2 / n1;
+                const var2 = s2**2 / n2;
+                 if (var1 < 0 || var2 < 0) throw new Error("Calculated variances are negative. Check inputs.");
+                se = Math.sqrt(var1 + var2);
+                df = (var1 + var2)**2 / ( (var1**2 / (n1 - 1)) + (var2**2 / (n2 - 1)) );
+            }
+             tStat = (xBar1 - xBar2 - diff0) / se;
+             const pValue = calculatePValue(tStat, alternative, 't', df);
+            return { type: 'mean', test: testName, statistic: tStat.toFixed(4), pValue: pValue.toFixed(5), df: df.toFixed(3), se: se.toFixed(4), inputs: {xBar1, s1, n1, xBar2, s2, n2, diff0, pooled} };
+        }
+
+         function matchedPairsTTestMean(alpha, alternative) {
+            const dBar = getInputValue('meanDiff');
+            const sd = getInputValue('stdDevDiff');
+            const n = getInputValue('sampleSizePairs', true, true);
+            const muD0 = getInputValue('hypothesizedMeanDiff');
+             if (n <= 1) throw new Error("Number of pairs (n) must be greater than 1.");
+             if (sd < 0) throw new Error("SD of differences (s<sub>d</sub>) cannot be negative.");
+            const df = n - 1;
+            const se = sd / Math.sqrt(n);
+            const tStat = (dBar - muD0) / se;
+            const pValue = calculatePValue(tStat, alternative, 't', df);
+            return { type: 'mean', test: 'Matched Pairs T-Test (Mean)', statistic: tStat.toFixed(4), pValue: pValue.toFixed(5), df: df, se: se.toFixed(4), inputs: {dBar, sd, n, muD0} };
+        }
+
+        function oneSampleZTestProp(alpha, alternative) {
+            const x = getInputValue('numSuccesses', true, true);
+            const n = getInputValue('sampleSize', true, true);
+            const p0 = getInputValue('hypothesizedProp');
+            if (n <= 0) throw new Error("Sample size (n) must be positive.");
+            if (x < 0 || x > n) throw new Error("Number of successes (x) must be between 0 and n.");
+            if (p0 <= 0 || p0 >= 1) throw new Error("Hypothesized proportion (p₀) must be between 0 and 1.");
+            const cond1 = n * p0;
+            const cond2 = n * (1 - p0);
+            const conditionsMet = cond1 >= 10 && cond2 >= 10;
+            const conditionMessage = conditionsMet ? "" : `Warning: Large counts condition (np₀≥10 and n(1-p₀)≥10) not met. (np₀=${cond1.toFixed(1)}, n(1-p₀)=${cond2.toFixed(1)})`;
+            const p_hat = x / n;
+            const se = Math.sqrt(p0 * (1 - p0) / n);
+             if (se === 0) throw new Error("Standard error is zero. Hypothesized proportion cannot be 0 or 1.");
+            const zStat = (p_hat - p0) / se;
+            const pValue = calculatePValue(zStat, alternative, 'normal');
+            return { type: 'prop', test: 'One-Sample Z-Test (Proportion)', statistic: zStat.toFixed(4), pValue: pValue.toFixed(5), se: se.toFixed(4), conditionsMet, conditionMessage, inputs: {x, n, p0, p_hat: p_hat.toFixed(4)} };
+        }
+
+        function twoSampleZTestProp(alpha, alternative) {
+            const x1 = getInputValue('numSuccesses1', true, true);
+            const n1 = getInputValue('sampleSize1', true, true);
+            const x2 = getInputValue('numSuccesses2', true, true);
+            const n2 = getInputValue('sampleSize2', true, true);
+            const diff0 = getInputValue('hypothesizedPropDiff');
+            if (n1 <= 0 || n2 <= 0) throw new Error("Sample sizes (n₁, n₂) must be positive.");
+            if (x1 < 0 || x1 > n1) throw new Error("Number of successes (x₁) must be between 0 and n₁.");
+            if (x2 < 0 || x2 > n2) throw new Error("Number of successes (x₂) must be between 0 and n₂.");
+            const p_hat1 = x1 / n1;
+            const p_hat2 = x2 / n2;
+            const p_pooled = (x1 + x2) / (n1 + n2);
+             if (p_pooled <= 0 || p_pooled >= 1) throw new Error("Pooled proportion is 0 or 1. Cannot proceed.");
+            const cond1 = n1 * p_pooled;
+            const cond2 = n1 * (1 - p_pooled);
+            const cond3 = n2 * p_pooled;
+            const cond4 = n2 * (1 - p_pooled);
+            const conditionsMet = cond1 >= 10 && cond2 >= 10 && cond3 >= 10 && cond4 >= 10;
+            const conditionMessage = conditionsMet ? "" : `Warning: Large counts condition (using pooled p̂: n₁p̂≥10, n₁(1-p̂)≥10, n₂p̂≥10, n₂(1-p̂)≥10) not met. Check counts: ${cond1.toFixed(1)}, ${cond2.toFixed(1)}, ${cond3.toFixed(1)}, ${cond4.toFixed(1)}.`;
+            const se = Math.sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2));
+             if (se === 0) throw new Error("Standard error is zero. Pooled proportion cannot be 0 or 1.");
+            const zStat = (p_hat1 - p_hat2 - diff0) / se;
+            const pValue = calculatePValue(zStat, alternative, 'normal');
+            return { type: 'prop', test: 'Two-Sample Z-Test (Proportions)', statistic: zStat.toFixed(4), pValue: pValue.toFixed(5), se: se.toFixed(4), conditionsMet, conditionMessage, inputs: {x1, n1, x2, n2, diff0, p_hat1: p_hat1.toFixed(4), p_hat2: p_hat2.toFixed(4), p_pooled: p_pooled.toFixed(4)} };
+        }
+
+        function calculateConfidenceInterval() {
+             const intervalType = intervalTypeSelect.value;
+             let result = {};
+
+             const confLevelElement = document.getElementById('confidenceLevel');
+             if (!confLevelElement) throw new Error('Confidence Level input element not found.');
+             const confLevelPercent = parseFloat(confLevelElement.value);
+             if (isNaN(confLevelPercent) || confLevelPercent <= 0 || confLevelPercent >= 100) {
+                  throw new Error('Invalid Confidence Level (%). Must be between 0 and 100 (exclusive).');
+             }
+             const confLevel = confLevelPercent / 100;
+
+             switch (intervalType) {
+                case 'z_one_mean': result = oneSampleZIntervalMean(confLevel); break;
+                case 't_one_mean': result = oneSampleTIntervalMean(confLevel); break;
+                case 'z_two_mean': result = twoSampleZIntervalMean(confLevel); break;
+                case 't_two_mean':
+                    const assumeCIVariance = getRadioValue('ciEqualVariance') === 'yes';
+                    result = twoSampleTIntervalMean(confLevel, assumeCIVariance);
+                    break;
+                case 't_matched_pairs': result = matchedPairsTIntervalMean(confLevel); break;
+                case 'z_one_prop': result = oneSampleZIntervalProp(confLevel); break;
+                case 'z_two_prop': result = twoSampleZIntervalProp(confLevel); break;
+                 default: throw new Error("Invalid interval type selected.");
+             }
+             displayIntervalResults(result, confLevel);
+        }
+
+        function oneSampleZIntervalMean(confLevel) {
+            const xBar = getInputValue('sampleMean', false);
+            const sigma = getInputValue('popStdDev', false);
+            const n = getInputValue('sampleSize', false, true);
+             if (n <= 0) throw new Error("Sample size (n) must be positive.");
+             if (sigma <= 0) throw new Error("Population SD (σ) must be positive.");
+            const alpha = 1 - confLevel;
+            const zCrit = jStat.normal.inv(1 - alpha / 2, 0, 1);
+            const se = sigma / Math.sqrt(n);
+            const marginOfError = zCrit * se;
+            const lowerBound = xBar - marginOfError;
+            const upperBound = xBar + marginOfError;
+            return { type: 'mean', intervalType: 'One-Sample Z-Interval (Mean)', pointEstimate: xBar, lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), inputs: {xBar, sigma, n} };
+        }
+
+         function oneSampleTIntervalMean(confLevel) {
+            const xBar = getInputValue('sampleMean', false);
+            const s = getInputValue('sampleStdDev', false);
+            const n = getInputValue('sampleSize', false, true);
+             if (n <= 1) throw new Error("Sample size (n) must be greater than 1 for T-interval.");
+             if (s < 0) throw new Error("Sample SD (s) cannot be negative.");
+            const df = n - 1;
+            const alpha = 1 - confLevel;
+            const tCrit = jStat.studentt.inv(1 - alpha / 2, df);
+            const se = s / Math.sqrt(n);
+            const marginOfError = tCrit * se;
+            const lowerBound = xBar - marginOfError;
+            const upperBound = xBar + marginOfError;
+            return { type: 'mean', intervalType: 'One-Sample T-Interval (Mean)', pointEstimate: xBar, lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), df: df, se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), inputs: {xBar, s, n} };
+        }
+
+        function twoSampleZIntervalMean(confLevel) {
+            const xBar1 = getInputValue('sampleMean1', false);
+            const sigma1 = getInputValue('popStdDev1', false);
+            const n1 = getInputValue('sampleSize1', false, true);
+            const xBar2 = getInputValue('sampleMean2', false);
+            const sigma2 = getInputValue('popStdDev2', false);
+            const n2 = getInputValue('sampleSize2', false, true);
+             if (n1 <= 0 || n2 <= 0) throw new Error("Sample sizes (n₁, n₂) must be positive.");
+             if (sigma1 <= 0 || sigma2 <= 0) throw new Error("Population SDs (σ₁, σ₂) must be positive.");
+            const pointEstimate = xBar1 - xBar2;
+            const alpha = 1 - confLevel;
+            const zCrit = jStat.normal.inv(1 - alpha / 2, 0, 1);
+            const se = Math.sqrt((sigma1**2 / n1) + (sigma2**2 / n2));
+            const marginOfError = zCrit * se;
+            const lowerBound = pointEstimate - marginOfError;
+            const upperBound = pointEstimate + marginOfError;
+            return { type: 'mean', intervalType: 'Two-Sample Z-Interval (Means)', pointEstimate: pointEstimate.toFixed(4), lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), inputs: {xBar1, sigma1, n1, xBar2, sigma2, n2} };
+        }
+
+         function twoSampleTIntervalMean(confLevel, pooled) {
+            const xBar1 = getInputValue('sampleMean1', false);
+            const s1 = getInputValue('sampleStdDev1', false);
+            const n1 = getInputValue('sampleSize1', false, true);
+            const xBar2 = getInputValue('sampleMean2', false);
+            const s2 = getInputValue('sampleStdDev2', false);
+            const n2 = getInputValue('sampleSize2', false, true);
+             if (n1 <= 1 || n2 <= 1) throw new Error("Sample sizes (n₁, n₂) must be greater than 1 for T-interval.");
+             if (s1 < 0 || s2 < 0) throw new Error("Sample SDs (s₁, s₂) cannot be negative.");
+            const pointEstimate = xBar1 - xBar2;
+            const alpha = 1 - confLevel;
+            let df, se, tCrit, intervalName;
+             if (pooled) {
+                 intervalName = 'Two-Sample Pooled T-Interval (Means)';
+                 df = n1 + n2 - 2;
+                 const sPooledSq = ((n1 - 1) * s1**2 + (n2 - 1) * s2**2) / df;
+                  if (sPooledSq < 0) throw new Error("Calculated pooled variance is negative. Check inputs.");
+                 se = Math.sqrt(sPooledSq * (1/n1 + 1/n2));
+             } else {
+                 intervalName = "Two-Sample Welch's T-Interval (Means)";
+                 const var1 = s1**2 / n1;
+                 const var2 = s2**2 / n2;
+                  if (var1 < 0 || var2 < 0) throw new Error("Calculated variances are negative. Check inputs.");
+                 se = Math.sqrt(var1 + var2);
+                 df = (var1 + var2)**2 / ( (var1**2 / (n1 - 1)) + (var2**2 / (n2 - 1)) );
+             }
+             tCrit = jStat.studentt.inv(1 - alpha / 2, df);
+             const marginOfError = tCrit * se;
+             const lowerBound = pointEstimate - marginOfError;
+             const upperBound = pointEstimate + marginOfError;
+             return { type: 'mean', intervalType: intervalName, pointEstimate: pointEstimate.toFixed(4), lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), df: df.toFixed(3), se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), inputs: {xBar1, s1, n1, xBar2, s2, n2, pooled} };
+         }
+
+         function matchedPairsTIntervalMean(confLevel) {
+            const dBar = getInputValue('meanDiff', false);
+            const sd = getInputValue('stdDevDiff', false);
+            const n = getInputValue('sampleSizePairs', false, true);
+             if (n <= 1) throw new Error("Number of pairs (n) must be greater than 1.");
+             if (sd < 0) throw new Error("SD of differences (s<sub>d</sub>) cannot be negative.");
+            const df = n - 1;
+            const alpha = 1 - confLevel;
+            const tCrit = jStat.studentt.inv(1 - alpha / 2, df);
+            const se = sd / Math.sqrt(n);
+            const marginOfError = tCrit * se;
+            const lowerBound = dBar - marginOfError;
+            const upperBound = dBar + marginOfError;
+             return { type: 'mean', intervalType: 'Matched Pairs T-Interval (Mean)', pointEstimate: dBar, lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), df: df, se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), inputs: {dBar, sd, n} };
+         }
+
+        function oneSampleZIntervalProp(confLevel) {
+            const x = getInputValue('numSuccesses', false, true);
+            const n = getInputValue('sampleSize', false, true);
+             if (n <= 0) throw new Error("Sample size (n) must be positive.");
+             if (x < 0 || x > n) throw new Error("Number of successes (x) must be between 0 and n.");
+            const p_hat = x / n;
+            const cond1 = n * p_hat;
+            const cond2 = n * (1 - p_hat);
+            const conditionsMet = cond1 >= 10 && cond2 >= 10;
+            const conditionMessage = conditionsMet ? "" : `Warning: Large counts condition (using p̂: np̂≥10 and n(1-p̂)≥10) not met. (Successes=${cond1.toFixed(0)}, Failures=${cond2.toFixed(0)})`;
+            const alpha = 1 - confLevel;
+            const zCrit = jStat.normal.inv(1 - alpha / 2, 0, 1);
+            const se = Math.sqrt(p_hat * (1 - p_hat) / n);
+             if (se === 0) {
+                 console.warn("Sample proportion is 0 or 1. Standard error is 0.");
+                 return { type: 'prop', intervalType: 'One-Sample Z-Interval (Proportion)', pointEstimate: p_hat.toFixed(4), lowerBound: p_hat.toFixed(4), upperBound: p_hat.toFixed(4), se: '0.0000', marginOfError: '0.0000', conditionsMet, conditionMessage, inputs: {x, n, p_hat: p_hat.toFixed(4)} };
+             }
+            const marginOfError = zCrit * se;
+            const lowerBound = Math.max(0, p_hat - marginOfError);
+            const upperBound = Math.min(1, p_hat + marginOfError);
+            return { type: 'prop', intervalType: 'One-Sample Z-Interval (Proportion)', pointEstimate: p_hat.toFixed(4), lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), conditionsMet, conditionMessage, inputs: {x, n, p_hat: p_hat.toFixed(4)} };
+        }
+
+        function twoSampleZIntervalProp(confLevel) {
+            const x1 = getInputValue('numSuccesses1', false, true);
+            const n1 = getInputValue('sampleSize1', false, true);
+            const x2 = getInputValue('numSuccesses2', false, true);
+            const n2 = getInputValue('sampleSize2', false, true);
+             if (n1 <= 0 || n2 <= 0) throw new Error("Sample sizes (n₁, n₂) must be positive.");
+             if (x1 < 0 || x1 > n1) throw new Error("Number of successes (x₁) must be between 0 and n₁.");
+             if (x2 < 0 || x2 > n2) throw new Error("Number of successes (x₂) must be between 0 and n₂.");
+            const p_hat1 = x1 / n1;
+            const p_hat2 = x2 / n2;
+            const cond1 = n1 * p_hat1;
+            const cond2 = n1 * (1 - p_hat1);
+            const cond3 = n2 * p_hat2;
+            const cond4 = n2 * (1 - p_hat2);
+            const conditionsMet = cond1 >= 10 && cond2 >= 10 && cond3 >= 10 && cond4 >= 10;
+            const conditionMessage = conditionsMet ? "" : `Warning: Large counts condition (using individual p̂'s: n₁p̂₁≥10, n₁(1-p̂₁)≥10, n₂p̂₂≥10, n₂(1-p̂₂)≥10) not met. Check counts: ${cond1.toFixed(0)}, ${cond2.toFixed(0)}, ${cond3.toFixed(0)}, ${cond4.toFixed(0)}.`;
+            const pointEstimate = p_hat1 - p_hat2;
+            const alpha = 1 - confLevel;
+            const zCrit = jStat.normal.inv(1 - alpha / 2, 0, 1);
+            const var1 = p_hat1 * (1 - p_hat1) / n1;
+            const var2 = p_hat2 * (1 - p_hat2) / n2;
+            const se = Math.sqrt(var1 + var2);
+             if (se === 0) {
+                 console.warn("Standard error is zero. One or both sample proportions might be 0 or 1.");
+                  return { type: 'prop', intervalType: 'Two-Sample Z-Interval (Proportions)', pointEstimate: pointEstimate.toFixed(4), lowerBound: pointEstimate.toFixed(4), upperBound: pointEstimate.toFixed(4), se: '0.0000', marginOfError: '0.0000', conditionsMet, conditionMessage, inputs: {x1, n1, x2, n2, p_hat1: p_hat1.toFixed(4), p_hat2: p_hat2.toFixed(4)} };
+             }
+            const marginOfError = zCrit * se;
+            const lowerBound = pointEstimate - marginOfError;
+            const upperBound = pointEstimate + marginOfError;
+            return { type: 'prop', intervalType: 'Two-Sample Z-Interval (Proportions)', pointEstimate: pointEstimate.toFixed(4), lowerBound: lowerBound.toFixed(4), upperBound: upperBound.toFixed(4), se: se.toFixed(4), marginOfError: marginOfError.toFixed(4), conditionsMet, conditionMessage, inputs: {x1, n1, x2, n2, p_hat1: p_hat1.toFixed(4), p_hat2: p_hat2.toFixed(4)} };
+        }
+
+        function calculatePValue(stat, alternative, distribution, df = null) {
+            let pValue;
+            const absStat = Math.abs(stat);
+            if (distribution === 'normal') {
+                if (alternative === 'neq') { pValue = 2 * jStat.normal.cdf(-absStat, 0, 1); }
+                else if (alternative === 'lt') { pValue = jStat.normal.cdf(stat, 0, 1); }
+                else { pValue = 1 - jStat.normal.cdf(stat, 0, 1); }
+            } else if (distribution === 't') {
+                 if (df === null || df <= 0) throw new Error("Valid degrees of freedom required for t-distribution.");
+                if (alternative === 'neq') { pValue = 2 * jStat.studentt.cdf(-absStat, df); }
+                else if (alternative === 'lt') { pValue = jStat.studentt.cdf(stat, df); }
+                else { pValue = 1 - jStat.studentt.cdf(stat, df); }
+            } else {
+                throw new Error("Unsupported distribution type for p-value calculation.");
+            }
+            return Math.max(0, pValue);
+        }
+
+        function displayTestResults(result, alpha) {
+            const conclusion = parseFloat(result.pValue) < alpha
+                ? `Since p-value (${result.pValue}) < α (${alpha}), we reject the null hypothesis`
+                : `Since p-value (${result.pValue}) ≥ α (${alpha}), we fail to reject the null hypothesis`;
+            const conditionHtml = result.conditionMessage ? `<p class="condition-warning">${result.conditionMessage}</p>` : '';
+             const inputSummary = Object.entries(result.inputs)
+                 .map(([key, value]) => `<li>${formatInputKey(key)}: ${value}</li>`)
+                 .join('');
+            resultsDiv.innerHTML = `
+                <h4 class="text-lg font-semibold mb-2">${result.test} Results</h4>
+                ${conditionHtml}
+                <p><strong>Test Statistic (${result.test.includes('Z-Test') ? 'z' : 't'}):</strong> ${result.statistic}</p>
+                ${result.df ? `<p><strong>Degrees of Freedom (df):</strong> ${result.df}</p>` : ''}
+                <p><strong>Standard Error (SE):</strong> ${result.se}</p>
+                <p><strong>P-value:</strong> ${result.pValue}</p>
+                <p><strong>Significance Level (α):</strong> ${alpha}</p>
+                <p class="mt-2 font-medium">${conclusion}</p>
+                <details class="mt-3 text-sm text-gray-600">
+                    <summary class="cursor-pointer font-medium text-blue-600 hover:underline">Show Inputs Used</summary>
+                    <ul class="list-disc list-inside mt-1">${inputSummary}</ul>
+                </details>
+            `;
+        }
+
+        function displayIntervalResults(result, confLevel) {
+             const conditionHtml = result.conditionMessage ? `<p class="condition-warning">${result.conditionMessage}</p>` : '';
+             let pointEstimateSymbol = '';
+             if (result.type === 'mean') {
+                 if (result.intervalType.includes('Matched Pairs')) pointEstimateSymbol = 'd̄';
+                 else if (result.intervalType.includes('Two-Sample')) pointEstimateSymbol = 'x̄₁ - x̄₂';
+                 else pointEstimateSymbol = 'x̄';
+             } else if (result.type === 'prop') {
+                  if (result.intervalType.includes('Two-Sample')) pointEstimateSymbol = 'p̂₁ - p̂₂';
+                 else pointEstimateSymbol = 'p̂';
+             }
+             const inputSummary = Object.entries(result.inputs)
+                 .map(([key, value]) => `<li>${formatInputKey(key)}: ${value}</li>`)
+                 .join('');
+            resultsDiv.innerHTML = `
+                <h4 class="text-lg font-semibold mb-2">${result.intervalType} Results</h4>
+                 ${conditionHtml}
+                <p><strong>Confidence Level:</strong> ${(confLevel * 100).toFixed(1)}%</p>
+                ${result.pointEstimate ? `<p><strong>Point Estimate (${pointEstimateSymbol}):</strong> ${result.pointEstimate}</p>` : ''}
+                ${result.df ? `<p><strong>Degrees of Freedom (df):</strong> ${result.df}</p>` : ''}
+                <p><strong>Standard Error (SE):</strong> ${result.se}</p>
+                <p><strong>Margin of Error:</strong> ${result.marginOfError}</p>
+                <p class="mt-2 font-medium"><strong>Confidence Interval:</strong> (${result.lowerBound}, ${result.upperBound})</p>
+                 <details class="mt-3 text-sm text-gray-600">
+                    <summary class="cursor-pointer font-medium text-blue-600 hover:underline">Show Inputs Used</summary>
+                    <ul class="list-disc list-inside mt-1">${inputSummary}</ul>
+                </details>
+            `;
+        }
+
+         function formatInputKey(key) {
+             const map = {
+                 xBar: 'x̄', xBar1: 'x̄₁', xBar2: 'x̄₂',
+                 sigma: 'σ', sigma1: 'σ₁', sigma2: 'σ₂',
+                 s: 's', s1: 's₁', s2: 's₂',
+                 n: 'n', n1: 'n₁', n2: 'n₂',
+                 mu0: 'μ₀', hypothesizedMean: 'μ₀',
+                 diff0: 'μ₁ - μ₂ (hyp.)', hypothesizedDiff: 'μ₁ - μ₂ (hyp.)',
+                 dBar: 'd̄', meanDiff: 'd̄',
+                 sd: 's<sub>d</sub>', stdDevDiff: 's<sub>d</sub>',
+                 muD0: 'μ<sub>d₀</sub>', hypothesizedMeanDiff: 'μ<sub>d₀</sub>',
+                 sampleSizePairs: 'n (pairs)', pooled: 'Pooled Variances',
+                 x: 'x', numSuccesses: 'x', numSuccesses1: 'x₁', numSuccesses2: 'x₂',
+                 p0: 'p₀', hypothesizedProp: 'p₀',
+                 p_hat: 'p̂', sampleProp: 'p̂', p_hat1: 'p̂₁', p_hat2: 'p̂₂',
+                 p_pooled: 'p̂<sub>pooled</sub>',
+                 hypothesizedPropDiff: 'p₁ - p₂ (hyp.)'
+             };
+             return map[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+         }
+
+        function clearResults() {
+            resultsDiv.innerHTML = 'Select your options and click Calculate';
+            errorDiv.textContent = '';
+             const inputs = document.querySelectorAll('#formContainer input[type="number"]');
+             inputs.forEach(input => input.classList.remove('border-red-500'));
+             document.getElementById('alpha')?.classList.remove('border-red-500');
+             document.getElementById('confidenceLevel')?.classList.remove('border-red-500');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadState);
+
+    </script>
+
+</body>
+</html>
