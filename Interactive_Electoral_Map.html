@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Electoral Map</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <style>
+        :root {
+            --safe-r: #e06666;
+            --likely-r: #ff7f7f;
+            --lean-r: #ffb3b3;
+            --tilt-r: #ffe0e0;
+            --toss-up: #ffffd9;
+            --tilt-d: #d9d9ff;
+            --lean-d: #b3b3ff;
+            --likely-d: #8080ff;
+            --safe-d: #5c5cff;
+            --map-stroke: #a0a0a0;
+            --map-bg: #f0f0f0;
+            --text-dark: #1f2937;
+            --text-light: #ffffff;
+            --bar-blue: var(--likely-d);
+            --bar-red: var(--likely-r);
+            --bar-tossup: var(--toss-up);
+            --bar-tossup-text: #333333;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: var(--text-dark);
+        }
+
+        .states path {
+            stroke: var(--map-stroke);
+            stroke-width: 0.5px;
+            cursor: pointer;
+            transition: filter 0.2s ease-in-out, stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out;
+        }
+        .states path:hover {
+            filter: brightness(0.95);
+            stroke-width: 1.5px;
+            stroke: #333;
+        }
+        .state-label {
+            font-size: 12px;
+            font-weight: 700;
+            fill: #000000;
+            text-anchor: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 0.5px;
+            stroke-linecap: butt;
+            stroke-linejoin: miter;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .safe-r { fill: var(--safe-r); }
+        .likely-r { fill: var(--likely-r); }
+        .lean-r { fill: var(--lean-r); }
+        .tilt-r { fill: var(--tilt-r); }
+        .toss-up { fill: var(--toss-up); }
+        .tilt-d { fill: var(--tilt-d); }
+        .lean-d { fill: var(--lean-d); }
+        .likely-d { fill: var(--likely-d); }
+        .safe-d { fill: var(--safe-d); }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .total-bar-container {
+            height: 30px;
+            background-color: #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            margin-top: 10px;
+            border: 1px solid #d1d5db;
+            position: relative;
+        }
+        .total-bar {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: width 0.5s ease-in-out;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .bar-blue { background-color: var(--bar-blue); }
+        .bar-red { background-color: var(--bar-red); }
+        .bar-tossup {
+            background-color: var(--bar-tossup);
+            color: var(--bar-tossup-text);
+            text-shadow: none;
+        }
+        .marker-270 {
+            position: absolute;
+            left: 50.185%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1;
+        }
+        .marker-270-label {
+            position: absolute;
+            left: 50.185%;
+            top: -15px;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        @media (max-width: 768px) {
+            .state-label { font-size: 10px; }
+            .flex-col.md\:flex-row { flex-direction: column; }
+            .w-full.md\:w-1\/3 { width: 100%; margin-bottom: 1rem; }
+            .w-full.md\:w-2\/3 { width: 100%; }
+            .text-3xl { font-size: 1.875rem; }
+            .text-xl { font-size: 1.25rem; }
+            .text-lg { font-size: 1.125rem; }
+        }
+        @media (max-width: 480px) {
+             .state-label { font-size: 8px; }
+             .text-3xl { font-size: 1.5rem; }
+             .text-xl { font-size: 1.125rem; }
+             .text-lg { font-size: 1rem; }
+             .legend-item > div:first-child { font-size: 0.875rem; }
+             .legend-item > div:last-child { font-size: 0.875rem; }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="p-4 md:p-6 bg-gray-100 font-sans">
+
+    <h1 class="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800">Interactive Electoral Map</h1>
+
+    <div class="flex flex-col md:flex-row gap-4 lg:gap-6 max-w-7xl mx-auto">
+
+        <div class="w-full md:w-1/3 lg:w-1/4 bg-white p-4 rounded-lg shadow-md order-2 md:order-1">
+            <h2 class="text-xl font-semibold mb-3 text-gray-700">Electoral Votes <span class="text-base font-normal text-gray-500">(270 to win)</span></h2>
+
+            <div class="flex justify-between items-center mb-3 text-center">
+                <div>
+                    <div id="total-d" class="text-3xl font-bold" style="color: var(--safe-d);">0</div>
+                    <div class="text-sm text-gray-600">Democrat</div>
+                </div>
+                <div>
+                    <div id="total-tossup" class="text-3xl font-bold text-gray-600">0</div>
+                    <div class="text-sm text-gray-600">Toss Up</div>
+                </div>
+                 <div>
+                    <div id="total-r" class="text-3xl font-bold" style="color: var(--safe-r);">0</div>
+                    <div class="text-sm text-gray-600">Republican</div>
+                </div>
+            </div>
+
+            <div class="relative mb-6">
+                 <div class="total-bar-container">
+                    <div id="bar-d" class="total-bar bar-blue" style="width: 0%;"></div>
+                    <div id="bar-tossup" class="total-bar bar-tossup" style="width: 0%;"></div>
+                    <div id="bar-r" class="total-bar bar-red" style="width: 0%;"></div>
+                 </div>
+                 <div class="marker-270"></div>
+                 <div class="marker-270-label">270</div>
+            </div>
+
+
+            <h3 class="text-lg font-semibold mt-4 mb-2 text-gray-700">Classification Totals</h3>
+            <div class="grid grid-cols-1 gap-1 text-sm">
+                <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--safe-r);"></span> Safe R</div>
+                    <div id="cat-safe-r" class="font-medium text-gray-700">0</div>
+                </div>
+                <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--likely-r);"></span> Likely R</div>
+                    <div id="cat-likely-r" class="font-medium text-gray-700">0</div>
+                </div>
+                <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--lean-r);"></span> Lean R</div>
+                    <div id="cat-lean-r" class="font-medium text-gray-700">0</div>
+                </div>
+                 <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--tilt-r);"></span> Tilt R</div>
+                    <div id="cat-tilt-r" class="font-medium text-gray-700">0</div>
+                </div>
+                <div class="legend-item justify-between my-1">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--toss-up);"></span> Toss Up</div>
+                    <div id="cat-toss-up" class="font-medium text-gray-700">0</div>
+                </div>
+                 <div class="legend-item justify-between">
+                     <div><span class="legend-color inline-block align-middle" style="background-color: var(--tilt-d);"></span> Tilt D</div>
+                    <div id="cat-tilt-d" class="font-medium text-gray-700">0</div>
+                </div>
+                <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--lean-d);"></span> Lean D</div>
+                    <div id="cat-lean-d" class="font-medium text-gray-700">0</div>
+                </div>
+                <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--likely-d);"></span> Likely D</div>
+                    <div id="cat-likely-d" class="font-medium text-gray-700">0</div>
+                </div>
+                 <div class="legend-item justify-between">
+                    <div><span class="legend-color inline-block align-middle" style="background-color: var(--safe-d);"></span> Safe D</div>
+                    <div id="cat-safe-d" class="font-medium text-gray-700">0</div>
+                </div>
+            </div>
+
+            <button id="reset-button" class="mt-5 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm">
+                Reset to Initial
+            </button>
+        </div>
+
+        <div class="w-full md:w-2/3 lg:w-3/4 bg-white p-2 rounded-lg shadow-md relative order-1 md:order-2">
+             <svg id="map-svg" width="100%" viewBox="0 0 975 610" preserveAspectRatio="xMidYMid meet"></svg>
+             </div>
+
+    </div>
+
+    <script>
+        const MAP_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-albers-10m.json';
+        const TOTAL_ELECTORAL_VOTES = 538;
+
+        const classifications = [
+            { id: 'toss-up', label: 'Toss Up', cssClass: 'toss-up', party: 'T' },
+            { id: 'tilt-r', label: 'Tilt R', cssClass: 'tilt-r', party: 'R' },
+            { id: 'lean-r', label: 'Lean R', cssClass: 'lean-r', party: 'R' },
+            { id: 'likely-r', label: 'Likely R', cssClass: 'likely-r', party: 'R' },
+            { id: 'safe-r', label: 'Safe R', cssClass: 'safe-r', party: 'R' },
+            { id: 'safe-d', label: 'Safe D', cssClass: 'safe-d', party: 'D' },
+            { id: 'likely-d', label: 'Likely D', cssClass: 'likely-d', party: 'D' },
+            { id: 'lean-d', label: 'Lean D', cssClass: 'lean-d', party: 'D' },
+            { id: 'tilt-d', label: 'Tilt D', cssClass: 'tilt-d', party: 'D' },
+        ];
+
+        const initialStatesData = {
+            'AL': { name: 'Alabama', ev: 9, classification: 'safe-r' },
+            'AK': { name: 'Alaska', ev: 3, classification: 'safe-r' },
+            'AZ': { name: 'Arizona', ev: 11, classification: 'tilt-r' },
+            'AR': { name: 'Arkansas', ev: 6, classification: 'safe-r' },
+            'CA': { name: 'California', ev: 54, classification: 'safe-d' },
+            'CO': { name: 'Colorado', ev: 10, classification: 'likely-d' },
+            'CT': { name: 'Connecticut', ev: 7, classification: 'safe-d' },
+            'DE': { name: 'Delaware', ev: 3, classification: 'safe-d' },
+            'DC': { name: 'District of Columbia', ev: 3, classification: 'safe-d' },
+            'FL': { name: 'Florida', ev: 30, classification: 'likely-r' },
+            'GA': { name: 'Georgia', ev: 16, classification: 'tilt-r' },
+            'HI': { name: 'Hawaii', ev: 4, classification: 'safe-d' },
+            'ID': { name: 'Idaho', ev: 4, classification: 'safe-r' },
+            'IL': { name: 'Illinois', ev: 19, classification: 'safe-d' },
+            'IN': { name: 'Indiana', ev: 11, classification: 'safe-r' },
+            'IA': { name: 'Iowa', ev: 6, classification: 'likely-r' },
+            'KS': { name: 'Kansas', ev: 6, classification: 'safe-r' },
+            'KY': { name: 'Kentucky', ev: 8, classification: 'safe-r' },
+            'LA': { name: 'Louisiana', ev: 8, classification: 'safe-r' },
+            'ME': { name: 'Maine', ev: 4, classification: 'lean-d' },
+            'MD': { name: 'Maryland', ev: 10, classification: 'safe-d' },
+            'MA': { name: 'Massachusetts', ev: 11, classification: 'safe-d' },
+            'MI': { name: 'Michigan', ev: 15, classification: 'tilt-r' },
+            'MN': { name: 'Minnesota', ev: 10, classification: 'likely-d' },
+            'MS': { name: 'Mississippi', ev: 6, classification: 'safe-r' },
+            'MO': { name: 'Missouri', ev: 10, classification: 'safe-r' },
+            'MT': { name: 'Montana', ev: 4, classification: 'safe-r' },
+            'NE': { name: 'Nebraska', ev: 5, classification: 'safe-r' },
+            'NV': { name: 'Nevada', ev: 6, classification: 'tilt-r' },
+            'NH': { name: 'New Hampshire', ev: 4, classification: 'lean-d' },
+            'NJ': { name: 'New Jersey', ev: 14, classification: 'safe-d' },
+            'NM': { name: 'New Mexico', ev: 5, classification: 'likely-d' },
+            'NY': { name: 'New York', ev: 28, classification: 'safe-d' },
+            'NC': { name: 'North Carolina', ev: 16, classification: 'lean-r' },
+            'ND': { name: 'North Dakota', ev: 3, classification: 'safe-r' },
+            'OH': { name: 'Ohio', ev: 17, classification: 'likely-r' },
+            'OK': { name: 'Oklahoma', ev: 7, classification: 'safe-r' },
+            'OR': { name: 'Oregon', ev: 8, classification: 'likely-d' },
+            'PA': { name: 'Pennsylvania', ev: 19, classification: 'tilt-r' },
+            'RI': { name: 'Rhode Island', ev: 4, classification: 'safe-d' },
+            'SC': { name: 'South Carolina', ev: 9, classification: 'safe-r' },
+            'SD': { name: 'South Dakota', ev: 3, classification: 'safe-r' },
+            'TN': { name: 'Tennessee', ev: 11, classification: 'safe-r' },
+            'TX': { name: 'Texas', ev: 40, classification: 'likely-r' },
+            'UT': { name: 'Utah', ev: 6, classification: 'safe-r' },
+            'VT': { name: 'Vermont', ev: 3, classification: 'safe-d' },
+            'VA': { name: 'Virginia', ev: 13, classification: 'likely-d' },
+            'WA': { name: 'Washington', ev: 12, classification: 'likely-d' },
+            'WV': { name: 'West Virginia', ev: 4, classification: 'safe-r' },
+            'WI': { name: 'Wisconsin', ev: 10, classification: 'tilt-r' },
+            'WY': { name: 'Wyoming', ev: 3, classification: 'safe-r' }
+        };
+
+        let currentStatesData = {};
+        const stateAbbreviations = {};
+        const statePaths = {};
+
+        const svg = d3.select("#map-svg");
+        const path = d3.geoPath();
+        const g = svg.append("g").attr("class", "states");
+        const labelsG = svg.append("g").attr("class", "state-labels");
+
+        function initializeMap() {
+             currentStatesData = JSON.parse(JSON.stringify(initialStatesData));
+
+            d3.json(MAP_URL).then(us => {
+                const states = topojson.feature(us, us.objects.states);
+
+                const nameToAbbr = {};
+                Object.entries(initialStatesData).forEach(([abbr, data]) => {
+                    nameToAbbr[data.name.toLowerCase()] = abbr;
+                });
+
+                states.features.forEach(feature => {
+                    const stateNameLower = feature.properties.name.toLowerCase();
+                    if (nameToAbbr[stateNameLower]) {
+                        stateAbbreviations[feature.id] = nameToAbbr[stateNameLower];
+                    }
+                });
+
+                g.selectAll("path")
+                    .data(states.features)
+                    .join("path")
+                    .attr("d", path)
+                    .attr("data-fips", d => d.id)
+                    .each(function(d) {
+                        const fips = d.id;
+                        const abbr = stateAbbreviations[fips];
+                         if (abbr && currentStatesData[abbr]) {
+                             const classificationId = currentStatesData[abbr].classification;
+                             const classification = classifications.find(c => c.id === classificationId);
+                             if (classification) {
+                                d3.select(this).attr("class", classification.cssClass);
+                             }
+                             statePaths[abbr] = this;
+                         } else {
+                            d3.select(this).attr("class", "toss-up").style("fill", "#e0e0e0");
+                         }
+                    })
+                    .on("click", handleStateClick)
+                    .on("mouseover", handleMouseOver)
+                    .on("mouseout", handleMouseOut);
+
+
+                labelsG.selectAll("text")
+                    .data(states.features.filter(d => stateAbbreviations[d.id] && currentStatesData[stateAbbreviations[d.id]]))
+                    .join("text")
+                    .attr("transform", d => {
+                        const centroid = path.centroid(d);
+                        if (isNaN(centroid[0]) || isNaN(centroid[1])) {
+                            if (d.id === '11') return `translate(840, 270)`;
+                            console.warn(`Centroid failed for FIPS ${d.id}, label hidden.`);
+                            return 'translate(-9999, -9999)';
+                        }
+                        let x = centroid[0];
+                        let y = centroid[1];
+                        const abbr = stateAbbreviations[d.id];
+                        if (abbr === 'RI') y += 3;
+                        if (abbr === 'DE') { x -= 2; y += 5; }
+                        if (abbr === 'MD') { x += 3; y -= 1; }
+                        if (abbr === 'DC') return `translate(840, 270)`;
+                        if (abbr === 'NJ') x += 2;
+                        if (abbr === 'CT') x -= 1;
+                        if (abbr === 'MA') y -= 1;
+                        return `translate(${x}, ${y})`;
+                    })
+                    .attr("class", "state-label")
+                    .style("font-size", d => {
+                        const abbr = stateAbbreviations[d.id];
+                        return ['CT', 'DE', 'DC', 'MA', 'NH', 'NJ', 'RI', 'VT'].includes(abbr) ? '10px' : null;
+                    })
+                    .text(d => {
+                        const abbr = stateAbbreviations[d.id];
+                        return abbr && currentStatesData[abbr] ? `${abbr} (${currentStatesData[abbr].ev})` : '';
+                    });
+
+                updateAll();
+
+            }).catch(error => {
+                console.error("Error loading or processing map data:", error);
+                svg.append("text")
+                   .attr("x", svg.node().viewBox.baseVal.width / 2)
+                   .attr("y", svg.node().viewBox.baseVal.height / 2)
+                   .attr("text-anchor", "middle")
+                   .attr("dy", "0.3em")
+                   .style("font-size", "16px")
+                   .style("fill", "red")
+                   .text("Error loading map data. Please try again later.");
+            });
+
+            document.getElementById('reset-button').addEventListener('click', () => {
+                currentStatesData = JSON.parse(JSON.stringify(initialStatesData));
+                updateAll();
+            });
+        }
+
+        function handleStateClick(event, d) {
+            const fips = d.id;
+            const abbr = stateAbbreviations[fips];
+            if (!abbr || !currentStatesData[abbr]) return;
+
+            const currentState = currentStatesData[abbr];
+            const currentClassIndex = classifications.findIndex(c => c.id === currentState.classification);
+            const nextClassIndex = (currentClassIndex + 1) % classifications.length;
+            const nextClassification = classifications[nextClassIndex];
+
+            currentState.classification = nextClassification.id;
+            updateSingleStateColor(abbr, nextClassification.cssClass);
+            updateTotals();
+        }
+
+         function handleMouseOver(event, d) {
+            d3.select(this).raise();
+        }
+
+        function handleMouseOut(event, d) {
+        }
+
+        function updateAll() {
+            updateMapColors();
+            updateTotals();
+        }
+
+        function updateSingleStateColor(abbr, newCssClass) {
+            const pathElement = statePaths[abbr];
+            if(pathElement) {
+                classifications.forEach(c => pathElement.classList.remove(c.cssClass));
+                pathElement.classList.add(newCssClass);
+            } else {
+                console.warn(`Path element not found for state: ${abbr}`);
+            }
+        }
+
+        function updateMapColors() {
+             Object.entries(currentStatesData).forEach(([abbr, data]) => {
+                const pathElement = statePaths[abbr];
+                if(pathElement) {
+                    const classification = classifications.find(c => c.id === data.classification);
+                    if (classification) {
+                        classifications.forEach(c => pathElement.classList.remove(c.cssClass));
+                        pathElement.classList.add(classification.cssClass);
+                    }
+                }
+            });
+        }
+
+
+        function updateTotals() {
+            let totals = { R: 0, D: 0, T: 0 };
+            let categoryTotals = {};
+            classifications.forEach(c => categoryTotals[c.id] = 0);
+
+            Object.values(currentStatesData).forEach(state => {
+                const classification = classifications.find(c => c.id === state.classification);
+                if (classification) {
+                    categoryTotals[classification.id] += state.ev;
+                    if (classification.party === 'R') totals.R += state.ev;
+                    else if (classification.party === 'D') totals.D += state.ev;
+                    else totals.T += state.ev;
+                }
+            });
+
+            document.getElementById('total-d').textContent = totals.D;
+            document.getElementById('total-r').textContent = totals.R;
+            document.getElementById('total-tossup').textContent = totals.T;
+
+            Object.entries(categoryTotals).forEach(([id, count]) => {
+                const element = document.getElementById(`cat-${id}`);
+                if (element) element.textContent = count;
+            });
+
+            const totalAllocated = totals.R + totals.D + totals.T;
+            const percentD = TOTAL_ELECTORAL_VOTES > 0 ? (totals.D / TOTAL_ELECTORAL_VOTES) * 100 : 0;
+            const percentR = TOTAL_ELECTORAL_VOTES > 0 ? (totals.R / TOTAL_ELECTORAL_VOTES) * 100 : 0;
+            const percentT = TOTAL_ELECTORAL_VOTES > 0 ? (totals.T / TOTAL_ELECTORAL_VOTES) * 100 : 0;
+
+            const barD = document.getElementById('bar-d');
+            const barR = document.getElementById('bar-r');
+            const barT = document.getElementById('bar-tossup');
+
+            barD.style.width = `${percentD}%`;
+            barR.style.width = `${percentR}%`;
+            barT.style.width = `${percentT}%`;
+
+            barD.textContent = totals.D > 0 ? totals.D : '';
+            barR.textContent = totals.R > 0 ? totals.R : '';
+            barT.textContent = totals.T > 0 ? totals.T : '';
+        }
+
+        initializeMap();
+
+    </script>
+
+</body>
+</html>
