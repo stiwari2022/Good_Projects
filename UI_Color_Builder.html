@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Color Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-size: 1.25rem;
+        line-height: 1;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--surface-2);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: hsl(var(--base-hue) var(--base-saturation) 60% / 0.7);
+        border-radius: 10px;
+        border: 2px solid var(--surface-2);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--base-hue) var(--base-saturation) 50% / 0.9);
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
+        outline: none;
+        opacity: 0.9;
+        transition: opacity .2s;
+        cursor: pointer;
+      }
+      input[type="range"]#saturationSlider {
+         background: linear-gradient(to right, hsl(var(--base-hue) 0% 50%), hsl(var(--base-hue) 100% 50%));
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: hsl(var(--base-hue) var(--base-saturation) 50%);
+        border: 2px solid var(--surface-1);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: hsl(var(--base-hue) var(--base-saturation) 50%);
+        border: 2px solid var(--surface-1);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      }
+      select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 0.7rem center;
+        background-size: 1.2em;
+        padding-right: 2.5rem;
+      }
+      :root {
+        --base-hue: 210;
+        --base-saturation: 70%;
+        --base-lightness-factor: 1;
+        --primary-lightness-light: 50%;
+        --primary-lightness-dark: 55%;
+
+        --primary-lightness: var(--primary-lightness-light);
+        --text-color: hsl(var(--base-hue) 15% 15%);
+        --text-muted-color: hsl(var(--base-hue) 10% 40%);
+        --text-inverted-color: hsl(var(--base-hue) 15% 95%);
+        --primary-color: hsl(var(--base-hue) var(--base-saturation) var(--primary-lightness));
+        --secondary-color: hsl(var(--base-hue) calc(var(--base-saturation) * 0.8) 65%);
+        --tertiary-color: hsl(var(--base-hue) calc(var(--base-saturation) * 0.6) 80%);
+        --accent-color: hsl(var(--base-hue) var(--base-saturation) 60%);
+
+        --surface-1: hsl(var(--base-hue) 20% 98%);
+        --surface-2: hsl(var(--base-hue) 20% 94%);
+        --surface-3: hsl(var(--base-hue) 20% 90%);
+
+        --border-1: hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.3);
+        --border-2: hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.5);
+        --border-3: hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.7);
+      }
+
+      html.dark {
+        --base-lightness-factor: 0.15;
+        --primary-lightness: var(--primary-lightness-dark);
+
+        --text-color: hsl(var(--base-hue) 15% 90%);
+        --text-muted-color: hsl(var(--base-hue) 10% 65%);
+        --text-inverted-color: hsl(var(--base-hue) 15% 10%);
+        --primary-color: hsl(var(--base-hue) var(--base-saturation) var(--primary-lightness));
+        --secondary-color: hsl(var(--base-hue) calc(var(--base-saturation) * 0.8) 45%);
+        --tertiary-color: hsl(var(--base-hue) calc(var(--base-saturation) * 0.6) 35%);
+        --accent-color: hsl(var(--base-hue) var(--base-saturation) 50%);
+
+        --surface-1: hsl(var(--base-hue) 10% 10%);
+        --surface-2: hsl(var(--base-hue) 10% 15%);
+        --surface-3: hsl(var(--base-hue) 10% 20%);
+
+      }
+
+      body {
+        background-color: var(--surface-1);
+        color: var(--text-color);
+        font-family: 'Inter', sans-serif;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="antialiased min-h-screen">
+
+    <header class="p-4 md:p-6 sticky top-0 z-10 backdrop-blur-md border-b" style="border-color: var(--border-1); background-color: hsl(var(--base-hue) 20% calc(var(--base-lightness-factor) * 96%) / 0.8);">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-bold" style="color: var(--primary-color);">UI Color Builder</h1>
+
+            <div class="flex flex-col sm:flex-row items-center gap-4 md:gap-6 w-full md:w-auto">
+                <div class="flex-1 w-full sm:w-48">
+                    <label for="hueSlider" class="block text-sm font-medium mb-1" style="color: var(--text-muted-color);">Base Tone (Hue: <span id="hueValue">210</span>)</label>
+                    <input type="range" id="hueSlider" min="0" max="360" value="210" class="w-full h-2 rounded-lg cursor-pointer">
+                </div>
+
+                <div class="flex-1 w-full sm:w-48">
+                    <label for="saturationSlider" class="block text-sm font-medium mb-1" style="color: var(--text-muted-color);">Base Saturation: <span id="saturationValue">70</span>%</label>
+                    <input type="range" id="saturationSlider" min="0" max="100" value="70" class="w-full h-2 rounded-lg cursor-pointer">
+                </div>
+
+                 <button id="themeToggle" class="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2" style="background-color: var(--surface-3); color: var(--text-color); focus:ring-color: var(--primary-color); focus:ring-offset-color: var(--surface-1);">
+                    <span class="lucide">&#xe9a6;</span> <span class="lucide hidden">&#xe979;</span> </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <section class="lg:col-span-2 p-6 rounded-lg border" style="background-color: var(--surface-2); border-color: var(--border-2);">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--text-color);">Live Preview</h2>
+
+            <div class="mb-6 p-4 rounded border flex justify-between items-center" style="background-color: var(--surface-1); border-color: var(--border-1);">
+                <div class="flex items-center gap-3">
+                    <span class="lucide text-xl" style="color: var(--primary-color);">&#xe9d9;</span> <span class="font-medium">Cool Template</span>
+                </div>
+                <nav class="flex gap-4 text-sm font-medium">
+                    <a href="#" class="hover:opacity-80" style="color: var(--text-muted-color);">Home</a>
+                    <a href="#" class="hover:opacity-80" style="color: var(--text-muted-color);">About</a>
+                    <a href="#" class="hover:opacity-80" style="color: var(--text-muted-color);">Join</a>
+                </nav>
+            </div>
+
+            <div class="text-center mb-8">
+                <h3 class="text-3xl md:text-4xl font-bold mb-2" style="color: var(--text-color);">A quick template for your website</h3>
+                <p class="text-lg mb-4" style="color: var(--text-muted-color);">Use this template to start your own project and make it look good</p>
+                <div class="flex justify-center gap-3">
+                    <button class="px-5 py-2 rounded-md font-semibold text-white shadow transition-opacity hover:opacity-90" style="background-color: var(--primary-color);">Get Started</button>
+                    <button class="px-5 py-2 rounded-md font-semibold border transition-colors hover:opacity-80" style="color: var(--text-color); border-color: var(--border-2); background-color: var(--surface-3);">Learn More</button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h4 class="font-semibold mb-2" style="color: var(--text-color);">Color Palette</h4>
+                <div class="grid grid-cols-3 gap-3 text-center text-sm">
+                    <div class="p-3 rounded border" style="background-color: var(--primary-color); border-color: var(--border-1);">
+                        <span style="color: var(--text-inverted-color);">Primary</span>
+                        <span class="block text-xs mt-1" style="color: hsl(var(--base-hue) var(--base-saturation) calc(var(--base-lightness-factor) * 90%));" id="primaryHsl"></span>
+                    </div>
+                    <div class="p-3 rounded border" style="background-color: var(--secondary-color); border-color: var(--border-1);">
+                        <span style="color: var(--text-inverted-color);">Secondary</span>
+                         <span class="block text-xs mt-1" style="color: hsl(var(--base-hue) var(--base-saturation) calc(var(--base-lightness-factor) * 90%));" id="secondaryHsl"></span>
+                    </div>
+                    <div class="p-3 rounded border" style="background-color: var(--tertiary-color); border-color: var(--border-1);">
+                         <span style="color: var(--text-color);">Tertiary</span>
+                         <span class="block text-xs mt-1" style="color: var(--text-muted-color);" id="tertiaryHsl"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h4 class="font-semibold mb-2" style="color: var(--text-color);">Borders and Shadows</h4>
+                    <div class="space-y-3">
+                        <div class="p-3 rounded border-2" style="border-color: var(--border-1); box-shadow: 0 1px 3px 0 hsla(var(--base-hue), 10%, 20%, 0.05);">Border level 1</div>
+                        <div class="p-3 rounded border-4" style="border-color: var(--border-2); box-shadow: 0 4px 6px -1px hsla(var(--base-hue), 10%, 20%, 0.06), 0 2px 4px -2px hsla(var(--base-hue), 10%, 20%, 0.06);">Border level 2</div>
+                        <div class="p-3 rounded border-[6px]" style="border-color: var(--border-3); box-shadow: 0 10px 15px -3px hsla(var(--base-hue), 10%, 20%, 0.07), 0 4px 6px -4px hsla(var(--base-hue), 10%, 20%, 0.07);">Border level 3</div>
+                    </div>
+                </div>
+                 <div>
+                    <h4 class="font-semibold mb-2" style="color: var(--text-color);">Surfaces</h4>
+                     <div class="space-y-3">
+                        <div class="p-3 rounded border" style="background-color: var(--surface-1); border-color: var(--border-1);">Surface level 1</div>
+                        <div class="p-3 rounded border" style="background-color: var(--surface-2); border-color: var(--border-2);">Surface level 2</div>
+                        <div class="p-3 rounded border" style="background-color: var(--surface-3); border-color: var(--border-3);">Surface level 3</div>
+                    </div>
+                </div>
+            </div>
+
+             <div>
+                <h4 class="font-semibold mb-3" style="color: var(--text-color);">More Components</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-lg border" style="background-color: var(--surface-1); border-color: var(--border-2);">
+                        <h5 class="font-medium mb-2" style="color: var(--text-color);">Card Title</h5>
+                        <p class="text-sm mb-3" style="color: var(--text-muted-color);">This demonstrates surface and text colors</p>
+                        <button class="w-full px-4 py-1.5 text-sm rounded font-medium border transition-colors hover:opacity-80" style="color: var(--primary-color); border-color: var(--primary-color); background-color: transparent;">Action</button>
+                    </div>
+                    <div>
+                        <label for="exampleInput" class="block text-sm font-medium mb-1" style="color: var(--text-muted-color);">Input Field</label>
+                        <input type="text" id="exampleInput" placeholder="Enter text here" class="w-full px-3 py-2 text-sm rounded border focus:outline-none focus:ring-2" style="background-color: var(--surface-3); border-color: var(--border-2); color: var(--text-color); focus:ring-color: var(--primary-color);">
+                        <button class="mt-3 w-full px-4 py-1.5 text-sm rounded font-medium text-white shadow transition-opacity hover:opacity-90" style="background-color: var(--accent-color);">Submit with Accent</button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <aside class="lg:col-span-1 p-6 rounded-lg border h-fit sticky top-[calc(4rem+1.5rem)]" style="background-color: var(--surface-2); border-color: var(--border-2);">
+             <h3 class="text-lg font-semibold mb-4" style="color: var(--text-color);">Color Values & Export</h3>
+
+             <div class="space-y-3 text-sm mb-6">
+                 <p><strong style="color: var(--text-muted-color);">Base Hue:</strong> <code id="displayHue">210</code></p>
+                 <p><strong style="color: var(--text-muted-color);">Base Saturation:</strong> <code id="displaySaturation">70%</code></p>
+                 <p><strong style="color: var(--text-muted-color);">Mode:</strong> <code id="displayMode">Light</code></p>
+                 <hr style="border-color: var(--border-1);" class="my-3">
+                 <p><strong style="color: var(--text-muted-color);">Primary:</strong> <code id="displayPrimaryHsl"></code></p>
+                 <p><strong style="color: var(--text-muted-color);">Secondary:</strong> <code id="displaySecondaryHsl"></code></p>
+                 <p><strong style="color: var(--text-muted-color);">Tertiary:</strong> <code id="displayTertiaryHsl"></code></p>
+                 <p><strong style="color: var(--text-muted-color);">Accent:</strong> <code id="displayAccentHsl"></code></p>
+                 <p><strong style="color: var(--text-muted-color);">Text:</strong> <code id="displayTextHsl"></code></p>
+                 <p><strong style="color: var(--text-muted-color);">Surface 1:</strong> <code id="displaySurface1Hsl"></code></p>
+                 <p><strong style="color: var(--text-muted-color);">Border 1:</strong> <code id="displayBorder1Hsl"></code></p>
+             </div>
+
+             <div class="space-y-3">
+                 <div>
+                     <label for="copyOptions" class="block text-sm font-medium mb-1" style="color: var(--text-muted-color);">Copy / Download Options</label>
+                     <select id="copyOptions" class="w-full px-3 py-2 text-sm rounded border focus:outline-none focus:ring-1" style="background-color: var(--surface-3); border-color: var(--border-2); color: var(--text-color); focus:ring-color: var(--primary-color);">
+                         <option value="all_css_vars">All CSS Variables</option>
+                         <option value="primary_hsl">Primary Color (HSL)</option>
+                         <option value="secondary_hsl">Secondary Color (HSL)</option>
+                         <option value="tertiary_hsl">Tertiary Color (HSL)</option>
+                         <option value="accent_hsl">Accent Color (HSL)</option>
+                         <option value="text_hsl">Text Color (HSL)</option>
+                         <option value="surface_1_hsl">Surface 1 (HSL)</option>
+                         <option value="border_1_hsl">Border 1 (HSL)</option>
+                         <option value="light_theme_css">Light Theme CSS Block</option>
+                         <option value="dark_theme_css">Dark Theme CSS Block</option>
+                         <option value="full_theme_css">Full Theme CSS (Root + Dark)</option>
+                     </select>
+                 </div>
+                 <div class="flex gap-2">
+                     <button id="copyButton" class="flex-1 px-4 py-2 text-sm rounded font-medium border transition-colors hover:opacity-80 flex items-center justify-center gap-2" style="color: var(--primary-color); border-color: var(--primary-color); background-color: transparent;">
+                         <span class="lucide">&#xe94d;</span> Copy
+                     </button>
+                     <button id="downloadButton" class="flex-1 px-4 py-2 text-sm rounded font-medium text-white shadow transition-opacity hover:opacity-90 flex items-center justify-center gap-2" style="background-color: var(--primary-color);">
+                          <span class="lucide">&#xe95f;</span> Download
+                     </button>
+                 </div>
+                 <p id="copyFeedback" class="text-xs text-center h-4" style="color: var(--accent-color);"></p>
+             </div>
+        </aside>
+
+    </main>
+
+    <script>
+        const hueSlider = document.getElementById('hueSlider');
+        const saturationSlider = document.getElementById('saturationSlider');
+        const hueValueSpan = document.getElementById('hueValue');
+        const saturationValueSpan = document.getElementById('saturationValue');
+        const root = document.documentElement;
+        const themeToggleButton = document.getElementById('themeToggle');
+        const copyOptions = document.getElementById('copyOptions');
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        const displayHue = document.getElementById('displayHue');
+        const displaySaturation = document.getElementById('displaySaturation');
+        const displayMode = document.getElementById('displayMode');
+        const displayPrimaryHsl = document.getElementById('displayPrimaryHsl');
+        const displaySecondaryHsl = document.getElementById('displaySecondaryHsl');
+        const displayTertiaryHsl = document.getElementById('displayTertiaryHsl');
+        const displayAccentHsl = document.getElementById('displayAccentHsl');
+        const displayTextHsl = document.getElementById('displayTextHsl');
+        const displaySurface1Hsl = document.getElementById('displaySurface1Hsl');
+        const displayBorder1Hsl = document.getElementById('displayBorder1Hsl');
+        const primaryHslSpan = document.getElementById('primaryHsl');
+        const secondaryHslSpan = document.getElementById('secondaryHsl');
+        const tertiaryHslSpan = document.getElementById('tertiaryHsl');
+
+
+        function getCssVariableValue(variableName) {
+            const computedStyle = getComputedStyle(root);
+            const rawValue = computedStyle.getPropertyValue(variableName).trim();
+
+            const tempEl = document.createElement('div');
+            if (rawValue.startsWith('hsl(')) {
+                 tempEl.style.color = rawValue;
+            } else if (rawValue.startsWith('hsla(')) {
+                 tempEl.style.borderColor = rawValue;
+            } else {
+                 tempEl.style.color = rawValue;
+            }
+
+            document.body.appendChild(tempEl);
+            let resolvedColor;
+            if (rawValue.startsWith('hsla(')) {
+                resolvedColor = getComputedStyle(tempEl).borderColor;
+            } else {
+                 resolvedColor = getComputedStyle(tempEl).color;
+            }
+            document.body.removeChild(tempEl);
+
+            if (resolvedColor.startsWith('rgb')) {
+                const values = resolvedColor.match(/[\d.]+/g).map(Number);
+                if (values.length === 3) {
+                    return rgbToHsl(values[0], values[1], values[2]);
+                } else if (values.length === 4) {
+                    return rgbaToHsla(values[0], values[1], values[2], values[3]);
+                }
+            }
+            return rawValue;
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255, g /= 255, b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            h = Math.round(h * 360);
+            s = Math.round(s * 100);
+            l = Math.round(l * 100);
+            return `hsl(${h}, ${s}%, ${l}%)`;
+        }
+
+        function rgbaToHsla(r, g, b, a) {
+             const hsl = rgbToHsl(r, g, b);
+             const [h, s, l] = hsl.match(/\d+/g);
+             const alpha = Math.round(a * 100) / 100;
+             return `hsla(${h}, ${s}%, ${l}%, ${alpha})`;
+        }
+
+
+        function updateColors() {
+            const hue = hueSlider.value;
+            const saturation = saturationSlider.value;
+
+            root.style.setProperty('--base-hue', hue);
+            root.style.setProperty('--base-saturation', `${saturation}%`);
+
+            saturationSlider.style.background = `linear-gradient(to right, hsl(${hue} 0% 50%), hsl(${hue} 100% 50%))`;
+
+            const thumbStyle = `
+                input[type="range"]::-webkit-slider-thumb { background: hsl(${hue} ${saturation}% 50%); border-color: var(--surface-1); }
+                input[type="range"]::-moz-range-thumb { background: hsl(${hue} ${saturation}% 50%); border-color: var(--surface-1); }
+            `;
+            let dynamicThumbStyle = document.getElementById('dynamic-thumb-style');
+            if (!dynamicThumbStyle) {
+                dynamicThumbStyle = document.createElement('style');
+                dynamicThumbStyle.id = 'dynamic-thumb-style';
+                document.head.appendChild(dynamicThumbStyle);
+            }
+            dynamicThumbStyle.textContent = thumbStyle;
+
+
+            hueValueSpan.textContent = hue;
+            saturationValueSpan.textContent = saturation;
+            displayHue.textContent = hue;
+            displaySaturation.textContent = `${saturation}%`;
+
+            setTimeout(() => {
+                displayPrimaryHsl.textContent = getCssVariableValue('--primary-color');
+                displaySecondaryHsl.textContent = getCssVariableValue('--secondary-color');
+                displayTertiaryHsl.textContent = getCssVariableValue('--tertiary-color');
+                displayAccentHsl.textContent = getCssVariableValue('--accent-color');
+                displayTextHsl.textContent = getCssVariableValue('--text-color');
+                displaySurface1Hsl.textContent = getCssVariableValue('--surface-1');
+                displayBorder1Hsl.textContent = getCssVariableValue('--border-1');
+
+                primaryHslSpan.textContent = getCssVariableValue('--primary-color');
+                secondaryHslSpan.textContent = getCssVariableValue('--secondary-color');
+                tertiaryHslSpan.textContent = getCssVariableValue('--tertiary-color');
+
+            }, 50);
+        }
+
+        function updateThemeToggleIcon(isDark) {
+            const sunIcon = themeToggleButton.querySelector('span:first-child');
+            const moonIcon = themeToggleButton.querySelector('span:last-child');
+            if (isDark) {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+                displayMode.textContent = 'Dark';
+            } else {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+                 displayMode.textContent = 'Light';
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = root.classList.toggle('dark');
+            localStorage.setItem('colorBuilderTheme', isDark ? 'dark' : 'light');
+            updateThemeToggleIcon(isDark);
+            updateColors();
+        }
+
+        function getThemeCssVariables(mode = 'light') {
+            const isDark = mode === 'dark';
+            const currentHue = root.style.getPropertyValue('--base-hue') || getComputedStyle(root).getPropertyValue('--base-hue').trim();
+            const currentSaturation = root.style.getPropertyValue('--base-saturation') || getComputedStyle(root).getPropertyValue('--base-saturation').trim();
+
+            const vars = {
+                '--base-hue': currentHue,
+                '--base-saturation': currentSaturation,
+                '--primary-lightness-light': '50%',
+                '--primary-lightness-dark': '55%',
+            };
+
+            if (isDark) {
+                 Object.assign(vars, {
+                    '--primary-lightness': 'var(--primary-lightness-dark)',
+                    '--text-color': `hsl(var(--base-hue) 15% 90%)`,
+                    '--text-muted-color': `hsl(var(--base-hue) 10% 65%)`,
+                    '--text-inverted-color': `hsl(var(--base-hue) 15% 10%)`,
+                    '--primary-color': `hsl(var(--base-hue) var(--base-saturation) var(--primary-lightness))`,
+                    '--secondary-color': `hsl(var(--base-hue) calc(var(--base-saturation) * 0.8) 45%)`,
+                    '--tertiary-color': `hsl(var(--base-hue) calc(var(--base-saturation) * 0.6) 35%)`,
+                    '--accent-color': `hsl(var(--base-hue) var(--base-saturation) 50%)`,
+                    '--surface-1': `hsl(var(--base-hue) 10% 10%)`,
+                    '--surface-2': `hsl(var(--base-hue) 10% 15%)`,
+                    '--surface-3': `hsl(var(--base-hue) 10% 20%)`,
+                    '--border-1': `hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.3)`,
+                    '--border-2': `hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.5)`,
+                    '--border-3': `hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.7)`
+                 });
+            } else {
+                 Object.assign(vars, {
+                    '--primary-lightness': 'var(--primary-lightness-light)',
+                    '--text-color': `hsl(var(--base-hue) 15% 15%)`,
+                    '--text-muted-color': `hsl(var(--base-hue) 10% 40%)`,
+                    '--text-inverted-color': `hsl(var(--base-hue) 15% 95%)`,
+                    '--primary-color': `hsl(var(--base-hue) var(--base-saturation) var(--primary-lightness))`,
+                    '--secondary-color': `hsl(var(--base-hue) calc(var(--base-saturation) * 0.8) 65%)`,
+                    '--tertiary-color': `hsl(var(--base-hue) calc(var(--base-saturation) * 0.6) 80%)`,
+                    '--accent-color': `hsl(var(--base-hue) var(--base-saturation) 60%)`,
+                    '--surface-1': `hsl(var(--base-hue) 20% 98%)`,
+                    '--surface-2': `hsl(var(--base-hue) 20% 94%)`,
+                    '--surface-3': `hsl(var(--base-hue) 20% 90%)`,
+                    '--border-1': `hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.3)`,
+                    '--border-2': `hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.5)`,
+                    '--border-3': `hsla(var(--base-hue), var(--base-saturation), var(--primary-lightness), 0.7)`
+                 });
+            }
+            return Object.entries(vars)
+                         .filter(([key]) => !key.includes('lightness-light') && !key.includes('lightness-dark'))
+                         .map(([key, value]) => `  ${key}: ${value};`).join('\n');
+        }
+
+
+        function generateContentToCopy() {
+            const selectedOption = copyOptions.value;
+             const helperVars = `  --primary-lightness-light: 50%;\n  --primary-lightness-dark: 55%;\n`;
+
+            switch (selectedOption) {
+                case 'all_css_vars':
+                    return `:root {\n${helperVars}${getThemeCssVariables('light')}\n}\n\nhtml.dark {\n${getThemeCssVariables('dark')}\n}`;
+                case 'primary_hsl': return getCssVariableValue('--primary-color');
+                case 'secondary_hsl': return getCssVariableValue('--secondary-color');
+                case 'tertiary_hsl': return getCssVariableValue('--tertiary-color');
+                case 'accent_hsl': return getCssVariableValue('--accent-color');
+                case 'text_hsl': return getCssVariableValue('--text-color');
+                case 'surface_1_hsl': return getCssVariableValue('--surface-1');
+                case 'border_1_hsl': return getCssVariableValue('--border-1');
+                case 'light_theme_css':
+                    return `:root {\n${helperVars}${getThemeCssVariables('light')}\n}`;
+                case 'dark_theme_css':
+                    return `html.dark {\n${getThemeCssVariables('dark')}\n}`;
+                 case 'full_theme_css':
+                    return `/* Generated Color Theme */\n:root {\n${helperVars}${getThemeCssVariables('light')}\n}\n\nhtml.dark {\n${getThemeCssVariables('dark')}\n}\n\n/* Apply base styles */\nbody {\n  background-color: var(--surface-1);\n  color: var(--text-color);\n}`;
+                default: return '';
+            }
+        }
+
+        copyButton.addEventListener('click', () => {
+            const textToCopy = generateContentToCopy();
+            if (navigator.clipboard && textToCopy) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        copyFeedback.textContent = 'Copied!';
+                        setTimeout(() => copyFeedback.textContent = '', 2000);
+                    })
+                    .catch(err => {
+                        copyFeedback.textContent = 'Failed to copy.';
+                        console.error('Failed to copy text: ', err);
+                        setTimeout(() => copyFeedback.textContent = '', 2000);
+                    });
+            } else {
+                 copyFeedback.textContent = 'Clipboard unavailable.';
+                 setTimeout(() => copyFeedback.textContent = '', 2000);
+            }
+        });
+
+        downloadButton.addEventListener('click', () => {
+            const selectedOption = copyOptions.value;
+            let fileContent = '';
+            let fileName = 'color-theme.css';
+
+            if (selectedOption.includes('_css') || selectedOption === 'all_css_vars') {
+                 fileContent = generateContentToCopy();
+                 if (selectedOption === 'light_theme_css') fileName = 'light-theme.css';
+                 else if (selectedOption === 'dark_theme_css') fileName = 'dark-theme.css';
+                 else if (selectedOption === 'full_theme_css') fileName = 'full-color-theme.css';
+                 else if (selectedOption === 'all_css_vars') fileName = 'all-css-vars.css';
+                 else {
+                     copyFeedback.textContent = 'Select a CSS block to download.';
+                     setTimeout(() => copyFeedback.textContent = '', 2000);
+                     return;
+                 }
+            } else {
+                 copyFeedback.textContent = 'Select a CSS block/variables to download.';
+                 setTimeout(() => copyFeedback.textContent = '', 2000);
+                 return;
+            }
+
+
+            if (fileContent) {
+                const blob = new Blob([fileContent], { type: 'text/css' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                copyFeedback.textContent = 'Downloaded!';
+                setTimeout(() => copyFeedback.textContent = '', 2000);
+            }
+        });
+
+
+        hueSlider.addEventListener('input', updateColors);
+        saturationSlider.addEventListener('input', updateColors);
+        themeToggleButton.addEventListener('click', toggleTheme);
+
+        const savedTheme = localStorage.getItem('colorBuilderTheme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            root.classList.add('dark');
+            updateThemeToggleIcon(true);
+        } else {
+             updateThemeToggleIcon(false);
+        }
+
+        updateColors();
+
+    </script>
+
+</body>
+</html>
