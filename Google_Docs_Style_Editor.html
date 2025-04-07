@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Docs Style Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal;
+        text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      }
+      .selected-element-instance-highlight {
+        outline: 2px solid #2563eb;
+        outline-offset: 3px; border-radius: 4px;
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        transition: outline 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      }
+      .selected-controls {
+        background-color: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding-left: 1rem; margin-left: -1rem;
+        transition: all 0.2s ease-in-out;
+      }
+      [contenteditable]:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+        border-radius: 2px;
+      }
+      #cssOutput::-webkit-scrollbar { width: 8px; }
+      #cssOutput::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+      #cssOutput::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+      #cssOutput::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+       .lucide-icon::before {
+         display: inline-block; font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal;
+         text-transform: none; line-height: 1; margin-right: 0.25em; vertical-align: middle;
+         -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+       }
+       .icon-align-left::before { content: '\e9d4'; } .icon-align-center::before { content: '\e9d2'; }
+       .icon-align-right::before { content: '\e9d5'; } .icon-align-justify::before { content: '\e9d3'; }
+       .icon-italic::before { content: '\ea00'; } .icon-bold::before { content: '\e9fa'; }
+       .icon-copy::before { content: '\e9c1'; margin-right: 0;}
+       .icon-trash-2::before { content: '\eb11'; }
+       .icon-heading-1::before { content: '\e9f3'; }
+       .icon-heading-2::before { content: '\e9f4'; }
+       .icon-pilcrow::before { content: '\ea40'; }
+
+       .labeled-button-grid button {
+           padding-left: 0.5rem; padding-right: 0.75rem; justify-content: center; background-color: white;
+       }
+       .labeled-button-grid button:hover { background-color: #f8fafc; }
+        .labeled-button-grid button.active-btn {
+            background-color: #dbeafe; color: #2563eb;
+            border-color: #93c5fd; z-index: 10;
+       }
+       .labeled-toggle-button { padding-left: 0.75rem; padding-right: 1rem; }
+       .labeled-toggle-button .lucide-icon::before { margin-right: 0.5em; }
+
+       .add-section-btn {
+           display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 0.75rem;
+           border: 1px solid #cbd5e1; border-radius: 0.375rem; background-color: white;
+           color: #475569; font-size: 0.875rem; font-weight: 500;
+           transition: all 0.15s ease-in-out; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+       }
+       .add-section-btn:hover {
+           background-color: #f8fafc; border-color: #94a3b8;
+           color: #1e293b;
+       }
+        .add-section-btn .lucide-icon::before { margin-right: 0.4em; }
+
+        .delete-section-btn {
+             display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 0.6rem 1rem;
+             border: 1px solid #93c5fd; border-radius: 0.375rem; background-color: #dbeafe;
+             color: #3b82f6; font-size: 0.875rem; font-weight: 500;
+             transition: all 0.15s ease-in-out; margin-top: 2rem;
+        }
+        .delete-section-btn:hover {
+            background-color: #bfdbfe; border-color: #60a5fa;
+            color: #2563eb;
+        }
+         .delete-section-btn .lucide-icon::before { margin-right: 0.4em; }
+
+        #previewArea h1, #previewArea h2, #previewArea p {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        [contenteditable] { display: block; }
+
+        #statusMessage { min-height: 1.25rem; }
+
+    </style>
+    <link id="googleFontsLink" rel="stylesheet" href="">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 font-sans text-slate-800 min-h-screen p-4 md:p-8">
+
+    <div class="container mx-auto max-w-7xl bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="md:flex">
+            <div class="md:w-1/3 lg:w-1/4 p-6 border-r border-slate-200 bg-slate-50">
+                <h2 class="text-xl font-semibold mb-4 text-slate-700">Customize Style</h2>
+                <div class="mb-6 pb-4 border-b border-slate-200">
+                    <h3 class="text-sm font-medium text-slate-500 mb-2">Add Section</h3>
+                    <div class="flex flex-wrap gap-2">
+                         <button id="addH1Btn" class="add-section-btn" title="Add Heading 1"><span class="lucide-icon icon-heading-1"></span> H1</button>
+                         <button id="addH2Btn" class="add-section-btn" title="Add Heading 2"><span class="lucide-icon icon-heading-2"></span> H2</button>
+                         <button id="addPBtn" class="add-section-btn" title="Add Paragraph"><span class="lucide-icon icon-pilcrow"></span> P</button>
+                    </div>
+                </div>
+                <div id="controlsContainer" class="space-y-6">
+                    <p id="controlsPrompt" class="text-sm text-slate-500 italic p-4">Click an element in the preview to customize its style</p>
+                </div>
+            </div>
+
+            <div class="md:w-2/3 lg:w-3/4 p-8 md:p-12">
+                 <div id="previewArea" class="space-y-8">
+                    <h1 contenteditable="true" data-element-type="h1">Editable Title</h1>
+                    <h2 contenteditable="true" data-element-type="h2">Editable Subtitle</h2>
+                    <p contenteditable="true" data-element-type="p">
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                    </p>
+                 </div>
+                 <div class="mt-12 pt-6 border-t border-slate-200">
+                    <h3 class="text-lg font-semibold mb-3 text-slate-700">Generated CSS</h3>
+                    <div class="relative">
+                        <pre id="cssOutput" class="bg-slate-800 text-slate-200 p-4 rounded-lg text-sm overflow-auto max-h-60 font-mono"></pre>
+                        <button id="copyCssButton" title="Copy CSS" class="lucide-icon icon-copy absolute top-3 right-3 p-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"><span class="sr-only">Copy CSS</span></button>
+                        <span id="copyMessage" class="absolute top-12 right-3 text-xs text-green-500 bg-slate-700 px-2 py-1 rounded opacity-0 transition-opacity duration-300">Copied!</span>
+                    </div>
+                    <p id="statusMessage" class="text-sm text-red-600 mt-2 font-medium"></p>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const googleFonts = [ "Poppins", "Roboto", "Open Sans", "Noto Sans Japanese", "Montserrat", "Lato", "Inter", "Roboto Condensed", "Roboto Mono", "Oswald", "Raleway", "Nunito Sans", "Nunito", "Ubuntu", "Rubik", "Playfair Display", "Merriweather", "Noto Sans Korean", "Roboto Slab", "PT Sans", "Kanit", "Work Sans", "Mulish", "Lora", "DM Sans", "Noto Sans Traditional Chinese", "Fira Sans", "Quicksand", "Barlow", "Inconsolata", "Manrope", "Hind Siliguri", "Heebo", "Titillium Web", "IBM Plex Sans", "PT Serif", "Noto Serif", "Karla", "Bebas Neue", "Nanum Gothic", "Schibsted Grotesk", "Libre Franklin", "Outfit", "Noto Color Emoji", "Josefin Sans", "Jost", "Libre Baskerville", "Source Sans 3", "Mukta", "Arial", "Verdana", "Tahoma", "Trebuchet MS", "Times New Roman", "Georgia", "Garamond", "Courier New", "Brush Script MT" ];
+        const fontSizes = [ "8px", "10px", "12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px", "36px", "40px", "48px", "56px", "64px", "72px", "80px", "96px" ];
+        const initialStyles = {
+            h1: { fontFamily: 'Montserrat', fontSize: '48px', fontWeight: '700', color: 'rgb(30, 41, 59)', textAlign: 'left', fontStyle: 'normal', lineHeight: '1.2' },
+            h2: { fontFamily: 'Lato', fontSize: '32px', fontWeight: '400', color: 'rgb(51, 65, 85)', textAlign: 'left', fontStyle: 'normal', lineHeight: '1.3' },
+            p:  { fontFamily: 'Open Sans', fontSize: '16px', fontWeight: '400', color: 'rgb(71, 85, 105)', textAlign: 'left', fontStyle: 'normal', lineHeight: '1.6' }
+        };
+
+        let currentStyles = JSON.parse(JSON.stringify(initialStyles));
+        let selectedElementType = null;
+        let selectedElementInstance = null;
+        const controlsPromptContent = '<p id="controlsPrompt" class="text-sm text-slate-500 italic p-4">Click an element in the preview to customize its style</p>';
+        const STORAGE_KEY = 'styleEditorState';
+        let statusTimeout = null;
+
+        const controlsContainer = document.getElementById('controlsContainer');
+        const previewArea = document.getElementById('previewArea');
+        const cssOutput = document.getElementById('cssOutput');
+        const copyCssButton = document.getElementById('copyCssButton');
+        const copyMessage = document.getElementById('copyMessage');
+        const googleFontsLink = document.getElementById('googleFontsLink');
+        const addH1Btn = document.getElementById('addH1Btn');
+        const addH2Btn = document.getElementById('addH2Btn');
+        const addPBtn = document.getElementById('addPBtn');
+        const statusMessage = document.getElementById('statusMessage');
+
+        function saveState() {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                const state = {
+                    htmlContent: previewArea.innerHTML,
+                    styles: currentStyles
+                };
+                chrome.storage.local.set({ [STORAGE_KEY]: state }, () => {
+                });
+            } else {
+                console.warn('Chrome Storage API not available. State will not be saved.');
+            }
+        }
+
+        function loadState() {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get(STORAGE_KEY, (result) => {
+                    if (result[STORAGE_KEY] && result[STORAGE_KEY].htmlContent && result[STORAGE_KEY].styles) {
+                        const savedState = result[STORAGE_KEY];
+
+                        previewArea.innerHTML = savedState.htmlContent;
+                        currentStyles = savedState.styles;
+
+                        applyAllInitialStyles();
+                        updateGoogleFontsLink();
+                        generateAndDisplayCss();
+                        resetControls();
+                        addContentEditableListeners();
+
+                    } else {
+                        applyAllInitialStyles();
+                        updateGoogleFontsLink();
+                        generateAndDisplayCss();
+                        resetControls();
+                        addContentEditableListeners();
+                    }
+                });
+            } else {
+                 console.warn('Chrome Storage API not available. Cannot load state.');
+                 applyAllInitialStyles();
+                 updateGoogleFontsLink();
+                 generateAndDisplayCss();
+                 resetControls();
+                 addContentEditableListeners();
+            }
+        }
+
+        function createControls(elementType) {
+            const styles = currentStyles[elementType];
+            controlsContainer.innerHTML = '';
+
+            const controlWrapper = document.createElement('div');
+            controlWrapper.id = `controls-${elementType}`;
+            controlWrapper.className = 'space-y-4 p-4 rounded-md selected-controls transition-all duration-200 ease-in-out';
+
+            const title = document.createElement('h3');
+            title.className = 'text-lg font-medium text-blue-600';
+            title.textContent = `Editing Style: ${elementType.toUpperCase()}`;
+            controlWrapper.appendChild(title);
+
+            controlWrapper.appendChild(createSelect('Font Family', 'fontFamily', googleFonts, styles.fontFamily, elementType));
+            controlWrapper.appendChild(createSelect('Font Size', 'fontSize', fontSizes, styles.fontSize, elementType));
+            controlWrapper.appendChild(createColorInput('Color', 'color', styles.color, elementType));
+
+            const togglesWrapper = document.createElement('div');
+            togglesWrapper.className = 'space-y-3 pt-2';
+            togglesWrapper.appendChild(createToggleButton('Bold', 'fontWeight', '700', '400', styles.fontWeight === '700', elementType, 'icon-bold'));
+            togglesWrapper.appendChild(createToggleButton('Italic', 'fontStyle', 'italic', 'normal', styles.fontStyle === 'italic', elementType, 'icon-italic'));
+            controlWrapper.appendChild(togglesWrapper);
+
+            controlWrapper.appendChild(createButtonGrid('Alignment', 'textAlign', [
+                { value: 'left', icon: 'icon-align-left', label: 'Left' }, { value: 'center', icon: 'icon-align-center', label: 'Center' },
+                { value: 'right', icon: 'icon-align-right', label: 'Right' }, { value: 'justify', icon: 'icon-align-justify', label: 'Justify' }
+            ], styles.textAlign, elementType));
+
+            if (selectedElementInstance) {
+                controlWrapper.appendChild(createDeleteButton());
+            }
+
+            controlsContainer.appendChild(controlWrapper);
+        }
+
+        function resetControls() {
+             controlsContainer.innerHTML = controlsPromptContent;
+        }
+
+        function createDeleteButton() {
+            const button = document.createElement('button');
+            button.id = 'deleteSectionBtn';
+            button.className = 'delete-section-btn';
+            button.innerHTML = `<span class="lucide-icon icon-trash-2"></span> Delete Selected Section`;
+            button.addEventListener('click', deleteSelectedSection);
+            return button;
+        }
+
+        function createLabel(text, htmlFor) {
+            const label = document.createElement('label');
+            label.htmlFor = htmlFor;
+            label.className = 'block text-sm font-medium text-slate-600 mb-1';
+            label.textContent = text;
+            return label;
+        }
+
+        function createSelect(labelText, property, options, currentValue, elementType) {
+            const id = `${elementType}-${property}-${Date.now()}`;
+            const div = document.createElement('div');
+            div.appendChild(createLabel(labelText, id));
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = 'mt-1 block w-full pl-3 pr-10 py-2 text-base border border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm';
+            select.dataset.property = property;
+            select.dataset.elementType = elementType;
+
+            options.forEach(option => {
+                const optionEl = document.createElement('option');
+                const value = (typeof option === 'object') ? option.value : option;
+                const name = (typeof option === 'object') ? option.name : option;
+                optionEl.value = value;
+                optionEl.textContent = name;
+                if (value === currentValue) {
+                    optionEl.selected = true;
+                }
+                select.appendChild(optionEl);
+            });
+
+            select.addEventListener('change', handleControlChange);
+            div.appendChild(select);
+            return div;
+        }
+
+         function createColorInput(labelText, property, currentValue, elementType) {
+            const id = `${elementType}-${property}-${Date.now()}`;
+            const div = document.createElement('div');
+            div.appendChild(createLabel(labelText, id));
+            const inputContainer = document.createElement('div');
+            inputContainer.className = 'flex items-center space-x-2';
+
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.id = id;
+            input.className = 'p-0 h-8 w-10 border border-slate-300 rounded-md cursor-pointer';
+            input.value = rgbToHex(currentValue);
+            input.dataset.property = property;
+            input.dataset.elementType = elementType;
+
+             const textValue = document.createElement('span');
+             textValue.className = 'text-sm text-slate-500 font-mono';
+             textValue.textContent = currentValue;
+
+            input.addEventListener('input', (event) => {
+                 const hexColor = event.target.value;
+                 const rgbColor = hexToRgb(hexColor);
+                 textValue.textContent = rgbColor;
+                 handleControlChange({ target: { dataset: { property: property, elementType: elementType }, value: rgbColor } });
+            });
+
+            inputContainer.appendChild(input);
+            inputContainer.appendChild(textValue);
+            div.appendChild(inputContainer);
+            return div;
+        }
+
+        function createButtonGrid(labelText, property, buttons, currentValue, elementType) {
+            const idPrefix = `${elementType}-${property}-${Date.now()}`;
+            const div = document.createElement('div');
+            div.appendChild(createLabel(labelText, idPrefix));
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-2 rounded-md shadow-sm overflow-hidden bg-slate-400 labeled-button-grid';
+            grid.role = 'group';
+
+            buttons.forEach((btn) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.property = property;
+                button.dataset.elementType = elementType;
+                button.dataset.value = btn.value;
+                button.title = btn.label;
+                button.className = `relative inline-flex items-center text-sm font-medium text-slate-700 focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors`;
+
+                if (btn.value === currentValue) {
+                    button.classList.add('active-btn');
+                }
+
+                const iconSpan = document.createElement('span'); iconSpan.className = `lucide-icon ${btn.icon}`; iconSpan.setAttribute('aria-hidden', 'true');
+                const labelSpan = document.createElement('span'); labelSpan.textContent = btn.label;
+                button.appendChild(iconSpan); button.appendChild(labelSpan);
+
+                button.addEventListener('click', (event) => {
+                    const clickedButton = event.target.closest('button');
+                    if (!clickedButton) return;
+                    handleControlChange({ target: clickedButton });
+                    grid.querySelectorAll('button').forEach(b => b.classList.remove('active-btn'));
+                    clickedButton.classList.add('active-btn');
+                });
+                grid.appendChild(button);
+            });
+            div.appendChild(grid);
+            return div;
+        }
+
+        function createToggleButton(labelText, property, activeValue, inactiveValue, isActive, elementType, iconClass) {
+            const id = `${elementType}-${property}-${Date.now()}`;
+            const div = document.createElement('div');
+            const button = document.createElement('button');
+            button.id = id;
+            button.type = 'button';
+            button.dataset.property = property;
+            button.dataset.elementType = elementType;
+            button.dataset.activeValue = activeValue;
+            button.dataset.inactiveValue = inactiveValue;
+            button.setAttribute('aria-pressed', isActive.toString());
+            button.className = `labeled-toggle-button relative inline-flex items-center border border-slate-300 text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors w-full justify-center ${
+                isActive ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white text-slate-700 hover:bg-slate-50'
+            }`;
+
+             const iconSpan = document.createElement('span'); iconSpan.className = `lucide-icon ${iconClass}`; iconSpan.setAttribute('aria-hidden', 'true');
+             const labelSpan = document.createElement('span'); labelSpan.textContent = labelText;
+             button.appendChild(iconSpan); button.appendChild(labelSpan);
+
+            button.addEventListener('click', (event) => {
+                 const currentPressedState = button.getAttribute('aria-pressed') === 'true';
+                 const newValue = currentPressedState ? inactiveValue : activeValue;
+                 button.setAttribute('aria-pressed', !currentPressedState);
+
+                 button.classList.toggle('bg-blue-100'); button.classList.toggle('text-blue-700'); button.classList.toggle('border-blue-300');
+                 button.classList.toggle('bg-white'); button.classList.toggle('text-slate-700'); button.classList.toggle('hover:bg-slate-50');
+
+                 handleControlChange({ target: { dataset: button.dataset, value: newValue } });
+            });
+            div.appendChild(button);
+            return div;
+        }
+
+        function handleControlChange(event) {
+            if (!selectedElementType || !selectedElementInstance) return;
+
+            const target = event.target;
+            const elementType = target.dataset.elementType;
+             if (!elementType) { console.error("Control change event missing elementType dataset", target); return; }
+
+            const property = target.dataset.property;
+            const value = target.dataset.value !== undefined ? target.dataset.value : target.value;
+
+            currentStyles[elementType][property] = value;
+
+            if (property === 'fontSize') {
+                const size = parseInt(value, 10);
+                let lineHeight = 1.6;
+                if (elementType === 'h1') lineHeight = size > 60 ? 1.1 : 1.2;
+                else if (elementType === 'h2') lineHeight = size > 40 ? 1.2 : 1.3;
+                currentStyles[elementType].lineHeight = lineHeight.toString();
+            }
+
+            applyInlineStylesToElement(selectedElementInstance, currentStyles[elementType]);
+
+            if (property === 'fontFamily' || property === 'fontWeight' || property === 'fontStyle') {
+                updateGoogleFontsLink();
+            }
+
+            generateAndDisplayCss();
+            saveState();
+        }
+
+        function handlePreviewClick(event) {
+            const clickedElement = event.target.closest('[data-element-type]');
+
+            if (!clickedElement) {
+                 if (selectedElementInstance) {
+                     selectedElementInstance.classList.remove('selected-element-instance-highlight');
+                     selectedElementInstance = null;
+                     selectedElementType = null;
+                     resetControls();
+                 }
+                 return;
+            }
+
+            if (selectedElementInstance === clickedElement) return;
+
+            if (selectedElementInstance) {
+                selectedElementInstance.classList.remove('selected-element-instance-highlight');
+            }
+
+            selectedElementInstance = clickedElement;
+            selectedElementType = clickedElement.dataset.elementType;
+            selectedElementInstance.classList.add('selected-element-instance-highlight');
+            createControls(selectedElementType);
+        }
+
+        function handleContentEditableInput(event) {
+            if (event.target.closest('#previewArea')) {
+                saveState();
+            }
+        }
+
+        function applyInlineStylesToElement(element, styles) {
+            if (!element || !styles) return;
+             element.style.fontFamily = `'${styles.fontFamily}', sans-serif`;
+             element.style.fontSize = styles.fontSize;
+             element.style.fontWeight = styles.fontWeight;
+             element.style.color = styles.color;
+             element.style.textAlign = styles.textAlign;
+             element.style.fontStyle = styles.fontStyle;
+             element.style.lineHeight = styles.lineHeight;
+        }
+
+        function applyAllInitialStyles() {
+            Object.keys(currentStyles).forEach(elementType => {
+                const elements = previewArea.querySelectorAll(`[data-element-type="${elementType}"]`);
+                elements.forEach(element => {
+                    applyInlineStylesToElement(element, currentStyles[elementType]);
+                });
+            });
+        }
+
+        function addSection(elementType) {
+            const newElement = document.createElement(elementType);
+            newElement.setAttribute('contenteditable', 'true');
+            newElement.dataset.elementType = elementType;
+
+            if (elementType === 'h1') newElement.textContent = 'New Heading 1';
+            else if (elementType === 'h2') newElement.textContent = 'New Heading 2';
+            else newElement.textContent = 'New paragraph. Click to edit.';
+
+            previewArea.appendChild(newElement);
+            applyInlineStylesToElement(newElement, currentStyles[elementType]);
+            newElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+             if (selectedElementInstance) {
+                selectedElementInstance.classList.remove('selected-element-instance-highlight');
+             }
+             selectedElementInstance = newElement;
+             selectedElementType = elementType;
+             selectedElementInstance.classList.add('selected-element-instance-highlight');
+             createControls(selectedElementType);
+             selectedElementInstance.focus();
+
+             generateAndDisplayCss();
+             saveState();
+             addContentEditableListeners();
+        }
+
+        function deleteSelectedSection() {
+            if (!selectedElementInstance) return;
+            selectedElementInstance.remove();
+            selectedElementInstance = null;
+            selectedElementType = null;
+            resetControls();
+
+            generateAndDisplayCss();
+            saveState();
+        }
+
+
+         function updateGoogleFontsLink() {
+            const families = new Set();
+            Object.values(currentStyles).forEach(style => {
+                 if (googleFonts.includes(style.fontFamily) && !["Arial", "Verdana", "Tahoma", "Trebuchet MS", "Times New Roman", "Georgia", "Garamond", "Courier New", "Brush Script MT"].includes(style.fontFamily)) {
+                     families.add(style.fontFamily.replace(/ /g, '+'));
+                 }
+            });
+
+            if (families.size === 0) {
+                googleFontsLink.href = ""; return;
+            }
+
+            const familyParams = Array.from(families).map(font => `family=${font}:ital,wght@0,400;0,700;1,400;1,700`).join('&');
+            const url = `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;
+            googleFontsLink.href = url;
+        }
+
+        function clearIndexedClasses(element) {
+            const classesToRemove = [];
+            element.classList.forEach(className => {
+                if (/^(h1|h2|p)_\d+$/.test(className)) {
+                    classesToRemove.push(className);
+                }
+            });
+            element.classList.remove(...classesToRemove);
+        }
+
+
+        function generateAndDisplayCss() {
+            let cssString = "";
+            const importUrl = googleFontsLink.href;
+            if (importUrl) {
+                cssString += `@import url('${importUrl}');\n\n`;
+            }
+
+            Object.keys(initialStyles).forEach(elementType => {
+                const elements = previewArea.querySelectorAll(`[data-element-type="${elementType}"]`);
+                const count = elements.length;
+                const styles = currentStyles[elementType];
+
+                elements.forEach(el => clearIndexedClasses(el));
+
+                if (count === 1) {
+                    const selector = elementType;
+                    cssString += `${selector} {\n`;
+                    cssString += `  font-family: '${styles.fontFamily}', sans-serif;\n`;
+                    cssString += `  font-size: ${styles.fontSize};\n`;
+                    cssString += `  font-weight: ${styles.fontWeight};\n`;
+                    cssString += `  line-height: ${styles.lineHeight};\n`;
+                    cssString += `  color: ${styles.color};\n`;
+                    cssString += `  text-align: ${styles.textAlign};\n`;
+                    cssString += `  font-style: ${styles.fontStyle};\n`;
+                    cssString += `}\n\n`;
+
+                } else if (count > 1) {
+                    elements.forEach((el, index) => {
+                        const indexedClassName = `${elementType}_${index + 1}`;
+                        el.classList.add(indexedClassName);
+                        const selector = `.${indexedClassName}`;
+                        cssString += `${selector} {\n`;
+                        cssString += `  font-family: '${styles.fontFamily}', sans-serif;\n`;
+                        cssString += `  font-size: ${styles.fontSize};\n`;
+                        cssString += `  font-weight: ${styles.fontWeight};\n`;
+                        cssString += `  line-height: ${styles.lineHeight};\n`;
+                        cssString += `  color: ${styles.color};\n`;
+                        cssString += `  text-align: ${styles.textAlign};\n`;
+                        cssString += `  font-style: ${styles.fontStyle};\n`;
+                        cssString += `}\n\n`;
+                    });
+                }
+            });
+
+            cssOutput.textContent = cssString.trim();
+        }
+
+        function showStatusMessage(message, duration = 3000) {
+            if (statusTimeout) {
+                clearTimeout(statusTimeout);
+            }
+            statusMessage.textContent = message;
+            statusTimeout = setTimeout(() => {
+                statusMessage.textContent = '';
+                statusTimeout = null;
+            }, duration);
+        }
+
+
+        function copyCssToClipboard() {
+            statusMessage.textContent = '';
+            if (statusTimeout) clearTimeout(statusTimeout);
+
+            if (!navigator.clipboard) {
+                console.error("Clipboard API not available.");
+                showStatusMessage("Clipboard access not available. Please copy manually.");
+                return;
+            }
+
+            const cssToCopy = cssOutput.textContent;
+
+            navigator.clipboard.writeText(cssToCopy).then(() => {
+                copyMessage.style.opacity = '1';
+                setTimeout(() => { copyMessage.style.opacity = '0'; }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy CSS to clipboard: ', err);
+                showStatusMessage("Failed to copy CSS. See console for details.");
+            });
+        }
+
+        function hexToRgb(hex) {
+            let r = 0, g = 0, b = 0;
+            if (hex.length == 4) { r = parseInt(hex[1] + hex[1], 16); g = parseInt(hex[2] + hex[2], 16); b = parseInt(hex[3] + hex[3], 16); }
+            else if (hex.length == 7) { r = parseInt(hex[1] + hex[2], 16); g = parseInt(hex[3] + hex[4], 16); b = parseInt(hex[5] + hex[6], 16); }
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        function rgbToHex(rgb) {
+            if (!rgb || !rgb.startsWith('rgb')) return '#000000';
+            const sep = rgb.includes(",") ? "," : " ";
+            rgb = rgb.substr(4).split(")")[0].split(sep);
+            let r = (+rgb[0]).toString(16), g = (+rgb[1]).toString(16), b = (+rgb[2]).toString(16);
+            if (r.length == 1) r = "0" + r; if (g.length == 1) g = "0" + g; if (b.length == 1) b = "0" + b;
+            return "#" + r + g + b;
+        }
+
+        function addContentEditableListeners() {
+            previewArea.removeEventListener('input', handleContentEditableInput);
+            previewArea.addEventListener('input', handleContentEditableInput);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            previewArea.addEventListener('click', handlePreviewClick);
+            addH1Btn.addEventListener('click', () => addSection('h1'));
+            addH2Btn.addEventListener('click', () => addSection('h2'));
+            addPBtn.addEventListener('click', () => addSection('p'));
+            copyCssButton.addEventListener('click', copyCssToClipboard);
+            loadState();
+        });
+
+    </script>
+
+</body>
+</html>
