@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Art Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 9999px;
+            cursor: pointer;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4a5568;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4a5568;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        .dark input[type="range"] {
+            background: #4a5568;
+        }
+        .dark input[type="range"]::-webkit-slider-thumb {
+            background: #e2e8f0;
+        }
+        .dark input[type="range"]::-moz-range-thumb {
+            background: #e2e8f0;
+        }
+        input[type="file"]::file-selector-button {
+            padding: 0.5rem 1rem;
+            margin-right: 0.5rem;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #3182ce;
+        }
+        .dark input[type="file"]::file-selector-button {
+            background-color: #63b3ed;
+            color: #1a202c;
+        }
+        .dark input[type="file"]::file-selector-button:hover {
+            background-color: #4299e1;
+        }
+        #asciiOutput {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre;
+            overflow: auto;
+            line-height: 1;
+            letter-spacing: 0;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            min-height: 500px;
+            color: #2d3748;
+            flex-grow: 1;
+        }
+        .dark #asciiOutput {
+            background-color: #1a202c;
+            border-color: #4a5568;
+            color: #e2e8f0;
+        }
+        label, button, select, input[type="checkbox"], input[type="radio"] {
+            transition: all 0.2s ease-in-out;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a0aec0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #718096;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+        input[type="number"].slider-value-input {
+            width: 5rem;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            text-align: right;
+            font-size: 0.875rem;
+            margin-left: 0.5rem;
+            background-color: #fff;
+        }
+        .dark input[type="number"].slider-value-input {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #e5e7eb;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <div class="container mx-auto p-4 md:p-8 flex flex-col h-screen">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-600 dark:text-blue-400 flex-shrink-0">ASCII Art Generator</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 flex-grow min-h-0">
+
+            <div class="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md space-y-6 overflow-y-auto">
+
+                <div class="border-b dark:border-gray-700 pb-4">
+                    <h2 class="text-lg font-semibold mb-3">Global Settings</h2>
+                    <div class="space-y-2">
+                        <label for="theme" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Theme:</label>
+                        <select id="theme" name="theme" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                        <div class="flex items-center mt-2">
+                            <input id="ignoreWhite" name="ignoreWhite" type="checkbox" class="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded">
+                            <label for="ignoreWhite" class="ml-2 block text-sm text-gray-900 dark:text-gray-200">Ignore Pure White</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-b dark:border-gray-700 pb-4">
+                    <h2 class="text-lg font-semibold mb-3">1. Upload Your File</h2>
+                    <label for="fileUpload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Image:</label>
+                    <input type="file" id="fileUpload" name="fileUpload" accept="image/*"
+                           class="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-800 cursor-pointer"
+                           style="color: transparent;"> <img id="preview" src="https://placehold.co/300x200/e2e8f0/a0aec0?text=Image+Preview" alt="Image Preview" class="mt-4 rounded-md max-w-full h-auto border dark:border-gray-600">
+                </div>
+
+                <div class="border-b dark:border-gray-700 pb-4 space-y-4">
+                    <h2 class="text-lg font-semibold mb-3">2. Basic Adjustments</h2>
+                    <div>
+                        <label for="outputWidth" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>Output Width (chars):</span>
+                            <input type="number" id="outputWidthInput" name="outputWidthInput" min="10" max="500" value="100" class="slider-value-input">
+                        </label>
+                        <input type="range" id="outputWidth" name="outputWidth" min="10" max="500" value="100" class="mt-1 w-full">
+                    </div>
+                     <div>
+                         <label for="brightness" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>Brightness:</span>
+                            <input type="number" id="brightnessInput" name="brightnessInput" min="-100" max="100" value="0" class="slider-value-input">
+                        </label>
+                        <input type="range" id="brightness" name="brightness" min="-100" max="100" value="0" class="mt-1 w-full">
+                    </div>
+                    <div>
+                        <label for="contrast" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>Contrast:</span>
+                            <input type="number" id="contrastInput" name="contrastInput" min="-100" max="100" value="0" class="slider-value-input">
+                        </label>
+                        <input type="range" id="contrast" name="contrast" min="-100" max="100" value="0" class="mt-1 w-full">
+                    </div>
+                    <div>
+                         <label for="blur" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>Blur (px):</span>
+                            <input type="number" id="blurInput" name="blurInput" min="0" max="10" step="0.1" value="0" class="slider-value-input">
+                        </label>
+                        <input type="range" id="blur" name="blur" min="0" max="10" value="0" step="0.1" class="mt-1 w-full">
+                    </div>
+                    <div class="flex items-center">
+                        <input id="invertColors" name="invertColors" type="checkbox" class="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded">
+                        <label for="invertColors" class="ml-2 block text-sm text-gray-900 dark:text-gray-200">Invert Colors</label>
+                    </div>
+                </div>
+
+                <div class="border-b dark:border-gray-700 pb-4 space-y-3">
+                    <h2 class="text-lg font-semibold mb-3">3. Dithering Options</h2>
+                    <div class="flex items-center">
+                        <input id="enableDithering" name="enableDithering" type="checkbox" class="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded">
+                        <label for="enableDithering" class="ml-2 block text-sm text-gray-900 dark:text-gray-200">Enable Dithering</label>
+                    </div>
+                    <div>
+                        <label for="ditherAlgorithm" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dither Algorithm:</label>
+                        <select id="ditherAlgorithm" name="ditherAlgorithm" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:opacity-50" disabled>
+                            <option value="floyd">Floyd–Steinberg</option>
+                            <option value="atkinson">Atkinson</option>
+                            <option value="noise">Noise</option>
+                            <option value="ordered">Ordered (4x4 Bayer)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border-b dark:border-gray-700 pb-4 space-y-3">
+                    <h2 class="text-lg font-semibold mb-3">4. Character Set</h2>
+                    <div>
+                        <label for="charSet" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Set:</label>
+                        <select id="charSet" name="charSet" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <option value="detailed">Detailed</option>
+                            <option value="standard">Standard</option>
+                            <option value="blocks">Blocks</option>
+                            <option value="binary">Binary</option>
+                            <option value="hex">Hex</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
+                     <div id="manualCharsetInput" class="hidden"> <label for="manualChars" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Manual Characters (darkest to lightest):</label>
+                        <input type="text" id="manualChars" name="manualChars" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2" placeholder="@%#*+=-:. ">
+                    </div>
+                </div>
+
+                <div class="border-b dark:border-gray-700 pb-4 space-y-3">
+                    <h2 class="text-lg font-semibold mb-3">5. Edge Detection</h2>
+                     <div>
+                        <label for="edgeDetection" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Method:</label>
+                        <select id="edgeDetection" name="edgeDetection" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <option value="none">No Edge Detection</option>
+                            <option value="sobel">Edge Detection</option>
+                            </select>
+                    </div>
+                    <div id="sobelOptions" class="hidden space-y-3 mt-2 border-t dark:border-gray-700 pt-3">
+                         <label for="sobelThreshold" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>Sobel Threshold:</span>
+                            <input type="number" id="sobelThresholdInput" name="sobelThresholdInput" min="0" max="255" value="50" class="slider-value-input">
+                        </label>
+                        <input type="range" id="sobelThreshold" name="sobelThreshold" min="0" max="255" value="50" class="w-full">
+                    </div>
+                    <div id="dogOptions" class="hidden space-y-3 mt-2 border-t dark:border-gray-700 pt-3">
+                         <label for="dogThreshold" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>DoG Threshold:</span>
+                             <input type="number" id="dogThresholdInput" name="dogThresholdInput" min="0" max="255" value="20" class="slider-value-input">
+                        </label>
+                        <input type="range" id="dogThreshold" name="dogThreshold" min="0" max="255" value="20" class="w-full">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Note: Currently applies threshold to Sobel magnitude (placeholder for full DoG).</p>
+                    </div>
+                </div>
+
+                <div class="border-b dark:border-gray-700 pb-4 space-y-4">
+                     <h2 class="text-lg font-semibold mb-3">6. Display Settings</h2>
+                    <div>
+                        <label for="zoom" class="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span>Zoom (%):</span>
+                             <input type="number" id="zoomInput" name="zoomInput" min="10" max="300" step="10" value="80" class="slider-value-input">
+                        </label>
+                        <input type="range" id="zoom" name="zoom" min="10" max="300" value="80" step="10" class="mt-1 w-full">
+                    </div>
+                </div>
+
+                <div>
+                    <button id="resetSettings" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-offset-gray-800">
+                        Reset All Settings
+                    </button>
+                </div>
+                <div class="h-4"></div> </div>
+
+            <div class="md:col-span-3 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex flex-col min-h-0">
+                 <h2 class="text-xl font-semibold mb-4 text-center flex-shrink-0">Generated ASCII Art</h2>
+                 <div class="overflow-auto flex-grow"> <pre id="asciiOutput" class="text-xs leading-tight">Your ASCII art will appear here</pre>
+                 </div>
+                 <div class="mt-4 flex flex-col sm:flex-row justify-center gap-3 flex-shrink-0">
+                     <button id="copyButton" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-offset-gray-800 flex-1">
+                         Copy ASCII to Clipboard
+                     </button>
+                     <button id="downloadButton" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-800 flex-1">
+                         Download ASCII (.png)
+                     </button>
+                 </div>
+                 <div id="copyMessage" class="text-center text-sm text-green-600 dark:text-green-400 mt-2 h-4 flex-shrink-0"></div> </div>
+
+        </div>
+    </div>
+
+    <canvas id="hiddenCanvas" style="display: none;"></canvas>
+
+    <script>
+        const themeSelector = document.getElementById('theme');
+        const ignoreWhiteCheckbox = document.getElementById('ignoreWhite');
+        const fileUpload = document.getElementById('fileUpload');
+        const previewImage = document.getElementById('preview');
+        const outputWidthSlider = document.getElementById('outputWidth');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const blurSlider = document.getElementById('blur');
+        const zoomSlider = document.getElementById('zoom');
+        const sobelThresholdSlider = document.getElementById('sobelThreshold');
+        const dogThresholdSlider = document.getElementById('dogThreshold');
+        const outputWidthInput = document.getElementById('outputWidthInput');
+        const brightnessInput = document.getElementById('brightnessInput');
+        const contrastInput = document.getElementById('contrastInput');
+        const blurInput = document.getElementById('blurInput');
+        const zoomInput = document.getElementById('zoomInput');
+        const sobelThresholdInput = document.getElementById('sobelThresholdInput');
+        const dogThresholdInput = document.getElementById('dogThresholdInput');
+        const invertColorsCheckbox = document.getElementById('invertColors');
+        const enableDitheringCheckbox = document.getElementById('enableDithering');
+        const ditherAlgorithmSelect = document.getElementById('ditherAlgorithm');
+        const charSetSelect = document.getElementById('charSet');
+        const manualCharsetInputDiv = document.getElementById('manualCharsetInput');
+        const manualCharsInput = document.getElementById('manualChars');
+        const edgeDetectionSelect = document.getElementById('edgeDetection');
+        const sobelOptionsDiv = document.getElementById('sobelOptions');
+        const dogOptionsDiv = document.getElementById('dogOptions');
+        const resetSettingsButton = document.getElementById('resetSettings');
+        const asciiOutputPre = document.getElementById('asciiOutput');
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const copyMessage = document.getElementById('copyMessage');
+        const hiddenCanvas = document.getElementById('hiddenCanvas');
+        const ctx = hiddenCanvas.getContext('2d', { willReadFrequently: true });
+
+        const charSets = {
+            detailed:  "`.-':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@",
+            standard: " .:-=+*#%@",
+            blocks:   " ░▒▓█",
+            binary:   " 1",
+            hex:      " 0123456789ABCDEF",
+            manual:   "@%#*+=-:. "
+        };
+
+        let currentImage = null;
+        const defaultSettings = {
+            theme: 'light',
+            ignoreWhite: true,
+            outputWidth: 100,
+            brightness: 0,
+            contrast: 0,
+            blur: 0,
+            invertColors: false,
+            enableDithering: false,
+            ditherAlgorithm: 'floyd',
+            charSet: 'detailed',
+            manualChars: charSets.manual,
+            edgeDetection: 'none',
+            sobelThreshold: 50,
+            dogThreshold: 20,
+            zoom: 80
+        };
+
+        const bayerMatrix4x4 = [
+            [ 0,  8,  2, 10],
+            [12,  4, 14,  6],
+            [ 3, 11,  1,  9],
+            [15,  7, 13,  5]
+        ];
+        const bayerSize = 4;
+        const bayerFactor = 1 / (bayerSize * bayerSize);
+        const bayerThresholdScale = 30;
+
+        const sobelKernelX = [
+            [-1, 0, 1],
+            [-2, 0, 2],
+            [-1, 0, 1]
+        ];
+        const sobelKernelY = [
+            [-1, -2, -1],
+            [ 0,  0,  0],
+            [ 1,  2,  1]
+        ];
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            themeSelector.value = theme;
+        }
+
+        function syncSliderAndInput(slider, input, isFloat = false) {
+            slider.addEventListener('input', () => {
+                input.value = slider.value;
+                if (slider === zoomSlider) {
+                     applyZoom(parseInt(slider.value, 10));
+                }
+                 if (slider === sobelThresholdSlider || slider === dogThresholdSlider) {
+                    processAndGenerateASCII();
+                }
+            });
+
+            input.addEventListener('change', () => {
+                let value = isFloat ? parseFloat(input.value) : parseInt(input.value, 10);
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+
+                if (isNaN(value)) {
+                    value = isFloat ? parseFloat(slider.value) : parseInt(slider.value, 10);
+                } else {
+                    value = Math.max(min, Math.min(max, value));
+                }
+
+                input.value = value;
+                slider.value = value;
+
+                if (slider === zoomSlider) {
+                    applyZoom(value);
+                } else {
+                    processAndGenerateASCII();
+                }
+            });
+        }
+
+        function getSettings() {
+            return {
+                theme: themeSelector.value,
+                ignoreWhite: ignoreWhiteCheckbox.checked,
+                outputWidth: parseInt(outputWidthSlider.value, 10),
+                brightness: parseInt(brightnessSlider.value, 10),
+                contrast: parseInt(contrastSlider.value, 10),
+                blur: parseFloat(blurSlider.value),
+                invertColors: invertColorsCheckbox.checked,
+                enableDithering: enableDitheringCheckbox.checked,
+                ditherAlgorithm: ditherAlgorithmSelect.value,
+                charSet: charSetSelect.value,
+                manualChars: manualCharsInput.value || charSets.manual,
+                edgeDetection: edgeDetectionSelect.value,
+                sobelThreshold: parseInt(sobelThresholdSlider.value, 10),
+                dogThreshold: parseInt(dogThresholdSlider.value, 10),
+                zoom: parseInt(zoomSlider.value, 10)
+            };
+        }
+
+        function resetControlsToDefaults() {
+            applyTheme(defaultSettings.theme);
+            ignoreWhiteCheckbox.checked = defaultSettings.ignoreWhite;
+
+            outputWidthSlider.value = defaultSettings.outputWidth;
+            outputWidthInput.value = defaultSettings.outputWidth;
+            brightnessSlider.value = defaultSettings.brightness;
+            brightnessInput.value = defaultSettings.brightness;
+            contrastSlider.value = defaultSettings.contrast;
+            contrastInput.value = defaultSettings.contrast;
+            blurSlider.value = defaultSettings.blur;
+            blurInput.value = defaultSettings.blur;
+            zoomSlider.value = defaultSettings.zoom;
+            zoomInput.value = defaultSettings.zoom;
+            sobelThresholdSlider.value = defaultSettings.sobelThreshold;
+            sobelThresholdInput.value = defaultSettings.sobelThreshold;
+            dogThresholdSlider.value = defaultSettings.dogThreshold;
+            dogThresholdInput.value = defaultSettings.dogThreshold;
+
+            invertColorsCheckbox.checked = defaultSettings.invertColors;
+            enableDitheringCheckbox.checked = defaultSettings.enableDithering;
+            ditherAlgorithmSelect.value = defaultSettings.ditherAlgorithm;
+            ditherAlgorithmSelect.disabled = !defaultSettings.enableDithering;
+            charSetSelect.value = defaultSettings.charSet;
+            manualCharsInput.value = defaultSettings.manualChars;
+            manualCharsetInputDiv.classList.toggle('hidden', defaultSettings.charSet !== 'manual');
+
+            edgeDetectionSelect.value = defaultSettings.edgeDetection;
+            edgeDetectionSelect.disabled = false;
+            sobelOptionsDiv.classList.add('hidden');
+            dogOptionsDiv.classList.add('hidden');
+
+            applyZoom(defaultSettings.zoom);
+
+            if (!currentImage) {
+                previewImage.src = 'https://placehold.co/300x200/e2e8f0/a0aec0?text=Image+Preview';
+                asciiOutputPre.textContent = 'Your ASCII art will appear here';
+            }
+            fileUpload.value = '';
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    currentImage = new Image();
+                    currentImage.onload = () => {
+                        processAndGenerateASCII();
+                    };
+                    currentImage.onerror = () => {
+                        alert("Error loading image. Please try a different file.");
+                        currentImage = null;
+                        resetControlsToDefaults();
+                    };
+                    currentImage.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            } else if (file) {
+                alert("Please upload a valid image file (e.g., JPG, PNG, GIF).");
+                event.target.value = null;
+            }
+        }
+
+        function drawImageToCanvasAndGetData(img, targetWidth, targetHeight, blurPx = 0) {
+             if (targetWidth <= 0 || targetHeight <= 0 || isNaN(targetWidth) || isNaN(targetHeight)) {
+                console.error("Invalid dimensions for canvas:", targetWidth, targetHeight);
+                asciiOutputPre.textContent = "Error: Invalid output dimensions specified.";
+                return null;
+            }
+            hiddenCanvas.width = targetWidth;
+            hiddenCanvas.height = targetHeight;
+            ctx.clearRect(0, 0, targetWidth, targetHeight);
+
+            if (blurPx > 0) {
+                ctx.filter = `blur(${blurPx}px)`;
+            } else {
+                ctx.filter = 'none';
+            }
+
+            try {
+                ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+            } catch (e) {
+                console.error("Error drawing image to canvas:", e);
+                asciiOutputPre.textContent = "Error: Failed to process image.";
+                return null;
+            }
+            ctx.filter = 'none';
+
+            try {
+                return ctx.getImageData(0, 0, targetWidth, targetHeight);
+            } catch (e) {
+                console.error("Error getting image data:", e);
+                if (e.name === 'SecurityError') {
+                     asciiOutputPre.textContent = "Error: Cannot process cross-origin image without CORS headers.";
+                } else {
+                     asciiOutputPre.textContent = "Error: Failed to read image data (maybe too large or invalid format?).";
+                }
+                return null;
+            }
+        }
+
+        function applyBrightnessContrast(imageData, brightness, contrast) {
+            const data = imageData.data;
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i] + brightness;
+                let g = data[i + 1] + brightness;
+                let b = data[i + 2] + brightness;
+
+                r = factor * (r - 128) + 128;
+                g = factor * (g - 128) + 128;
+                b = factor * (b - 128) + 128;
+
+                data[i] = Math.max(0, Math.min(255, r));
+                data[i + 1] = Math.max(0, Math.min(255, g));
+                data[i + 2] = Math.max(0, Math.min(255, b));
+            }
+            return imageData;
+        }
+
+        function applyInvert(imageData) {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];
+                data[i + 1] = 255 - data[i + 1];
+                data[i + 2] = 255 - data[i + 2];
+            }
+            return imageData;
+        }
+
+        function getGrayscaleValue(r, g, b) {
+            return 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+
+        function applyConvolution(imageData, kernel) {
+            const width = imageData.width;
+            const height = imageData.height;
+            const srcData = imageData.data;
+            const outputData = new Float32Array(width * height);
+            const kernelSize = kernel.length;
+            const kernelRadius = Math.floor(kernelSize / 2);
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0;
+                    for (let ky = 0; ky < kernelSize; ky++) {
+                        for (let kx = 0; kx < kernelSize; kx++) {
+                            const pixelY = Math.min(height - 1, Math.max(0, y + ky - kernelRadius));
+                            const pixelX = Math.min(width - 1, Math.max(0, x + kx - kernelRadius));
+                            const srcIndex = (pixelY * width + pixelX) * 4;
+                            const gray = getGrayscaleValue(srcData[srcIndex], srcData[srcIndex + 1], srcData[srcIndex + 2]);
+                            sum += gray * kernel[ky][kx];
+                        }
+                    }
+                    outputData[y * width + x] = sum;
+                }
+            }
+            return outputData;
+        }
+
+        function applySobel(imageData, threshold) {
+            const width = imageData.width;
+            const height = imageData.height;
+            const gxData = applyConvolution(imageData, sobelKernelX);
+            const gyData = applyConvolution(imageData, sobelKernelY);
+            const magnitudeData = new Uint8ClampedArray(width * height * 4);
+            let maxMagnitude = 0;
+            const magnitudes = new Float32Array(width * height);
+
+            for (let i = 0; i < width * height; i++) {
+                const magnitude = Math.sqrt(gxData[i] ** 2 + gyData[i] ** 2);
+                magnitudes[i] = magnitude;
+                if (magnitude > maxMagnitude) {
+                    maxMagnitude = magnitude;
+                }
+            }
+
+            const normalizationFactor = maxMagnitude > 0 ? 255 / maxMagnitude : 0;
+            for (let i = 0; i < width * height; i++) {
+                let normalizedMagnitude = magnitudes[i] * normalizationFactor;
+                const finalValue = normalizedMagnitude >= threshold ? 255 : 0;
+                const dataIndex = i * 4;
+                magnitudeData[dataIndex] = finalValue;
+                magnitudeData[dataIndex + 1] = finalValue;
+                magnitudeData[dataIndex + 2] = finalValue;
+                magnitudeData[dataIndex + 3] = 255;
+            }
+            return new ImageData(magnitudeData, width, height);
+        }
+
+        function applyDoG_Placeholder(imageData, threshold) {
+             console.warn("Using placeholder DoG implementation (Sobel magnitude + DoG threshold).");
+             return applySobel(imageData, threshold);
+        }
+
+        function findClosestCharIndex(gray, rampLength) {
+            gray = Math.max(0, Math.min(255, gray));
+            const index = Math.floor((gray / 256) * rampLength);
+            return Math.max(0, Math.min(rampLength - 1, index));
+        }
+
+        function getGrayValueForCharIndex(index, rampLength) {
+            return (index + 0.5) * (255 / rampLength);
+        }
+
+        function mapGrayToChar(gray, charRamp, ignoreWhite) {
+            const rampLength = charRamp.length;
+            const whiteThreshold = 250;
+            gray = Math.max(0, Math.min(255, gray));
+
+            const closestIndex = findClosestCharIndex(gray, rampLength);
+
+            if (ignoreWhite && closestIndex === rampLength - 1 && gray >= whiteThreshold) {
+                 return ' ';
+            }
+            return charRamp[closestIndex];
+        }
+
+        function applyDithering(imageData, algorithm, charRamp, ignoreWhite) {
+            const width = imageData.width;
+            const height = imageData.height;
+            const data = imageData.data;
+            const rampLength = charRamp.length;
+            let asciiString = "";
+
+            const grayValues = new Array(height);
+            for (let y = 0; y < height; y++) {
+                grayValues[y] = new Array(width);
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    grayValues[y][x] = getGrayscaleValue(data[i], data[i + 1], data[i + 2]);
+                }
+            }
+
+            const addError = (x, y, error) => {
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    grayValues[y][x] = Math.max(0, Math.min(255, grayValues[y][x] + error));
+                }
+            };
+
+            for (let y = 0; y < height; y++) {
+                let rowString = "";
+                for (let x = 0; x < width; x++) {
+                    const oldGray = grayValues[y][x];
+                    let finalChar = '';
+
+                    if (algorithm === 'floyd' || algorithm === 'atkinson') {
+                        const closestIndex = findClosestCharIndex(oldGray, rampLength);
+                        const newGray = getGrayValueForCharIndex(closestIndex, rampLength);
+                        const error = oldGray - newGray;
+
+                        if (ignoreWhite && closestIndex === rampLength - 1 && oldGray >= 250) {
+                             finalChar = ' ';
+                        } else {
+                             finalChar = charRamp[closestIndex];
+                        }
+
+                        if (algorithm === 'floyd') {
+                            addError(x + 1, y,     error * 7 / 16);
+                            addError(x - 1, y + 1, error * 3 / 16);
+                            addError(x,     y + 1, error * 5 / 16);
+                            addError(x + 1, y + 1, error * 1 / 16);
+                        } else {
+                            addError(x + 1, y,     error * 1 / 8);
+                            addError(x + 2, y,     error * 1 / 8);
+                            addError(x - 1, y + 1, error * 1 / 8);
+                            addError(x,     y + 1, error * 1 / 8);
+                            addError(x + 1, y + 1, error * 1 / 8);
+                            addError(x,     y + 2, error * 1 / 8);
+                        }
+                    } else if (algorithm === 'noise') {
+                        const noiseFactor = 30;
+                        const noisyGray = oldGray + (Math.random() - 0.5) * noiseFactor;
+                        finalChar = mapGrayToChar(noisyGray, charRamp, ignoreWhite);
+                    } else if (algorithm === 'ordered') {
+                        const threshold = (bayerMatrix4x4[y % bayerSize][x % bayerSize] * bayerFactor - 0.5) * bayerThresholdScale;
+                        const thresholdedGray = oldGray + threshold;
+                        finalChar = mapGrayToChar(thresholdedGray, charRamp, ignoreWhite);
+                    } else {
+                         finalChar = mapGrayToChar(oldGray, charRamp, ignoreWhite);
+                    }
+                    rowString += finalChar;
+                }
+                asciiString += rowString + "\n";
+            }
+            return asciiString;
+        }
+
+        function applyZoom(zoomPercentage) {
+             const scale = zoomPercentage / 100;
+             const baseFontSize = 10;
+             const baseLineHeight = 1.0;
+
+             asciiOutputPre.style.fontSize = `${baseFontSize * scale}px`;
+             asciiOutputPre.style.lineHeight = `${Math.max(0.5, baseLineHeight * scale)}`;
+
+             if (scale < 0.5) {
+                 asciiOutputPre.style.letterSpacing = "-1px";
+             } else {
+                 asciiOutputPre.style.letterSpacing = "0";
+             }
+        }
+
+        function processAndGenerateASCII() {
+            clearTimeout(window.asciiRegenTimeout);
+            window.asciiRegenTimeout = setTimeout(() => {
+                if (!currentImage || !currentImage.complete || currentImage.naturalWidth === 0) {
+                    console.warn("Image not ready or invalid for processing.");
+                    return;
+                }
+
+                const settings = getSettings();
+
+                const chars = (settings.charSet === 'manual' ? settings.manualChars : charSets[settings.charSet]) || charSets.standard;
+                const charRamp = chars.split("").reverse().join("");
+
+                const charAspectRatio = 0.6;
+                const targetWidth = settings.outputWidth;
+                const imageAspectRatio = currentImage.naturalWidth / currentImage.naturalHeight;
+                const targetHeight = Math.max(1, Math.round(targetWidth / imageAspectRatio * charAspectRatio));
+
+                let imageData = drawImageToCanvasAndGetData(currentImage, targetWidth, targetHeight, settings.blur);
+                if (!imageData) {
+                    return;
+                }
+
+                if (settings.brightness !== 0 || settings.contrast !== 0) {
+                     imageData = applyBrightnessContrast(imageData, settings.brightness, settings.contrast);
+                }
+
+                if (settings.invertColors) {
+                    imageData = applyInvert(imageData);
+                }
+
+                let isEdgeDetected = false;
+                if (settings.edgeDetection === 'sobel') {
+                    imageData = applySobel(imageData, settings.sobelThreshold);
+                    isEdgeDetected = true;
+                } else if (settings.edgeDetection === 'dog') {
+                    imageData = applyDoG_Placeholder(imageData, settings.dogThreshold);
+                    isEdgeDetected = true;
+                }
+
+                let asciiString = "";
+                if (settings.enableDithering && !isEdgeDetected) {
+                    asciiString = applyDithering(imageData, settings.ditherAlgorithm, charRamp, settings.ignoreWhite);
+                } else {
+                    const data = imageData.data;
+                    for (let y = 0; y < targetHeight; y++) {
+                        let rowString = "";
+                        for (let x = 0; x < targetWidth; x++) {
+                            const i = (y * targetWidth + x) * 4;
+                            const gray = data[i];
+                            rowString += mapGrayToChar(gray, charRamp, settings.ignoreWhite);
+                        }
+                        asciiString += rowString + "\n";
+                    }
+                }
+
+                asciiOutputPre.textContent = asciiString;
+                applyZoom(settings.zoom);
+
+            }, 150);
+        }
+
+        function copyToClipboard() {
+            const textToCopy = asciiOutputPre.textContent;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        copyMessage.textContent = 'Copied!';
+                        setTimeout(() => copyMessage.textContent = '', 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy using Clipboard API: ', err);
+                        copyMessage.textContent = 'Copy failed!';
+                         setTimeout(() => copyMessage.textContent = '', 2000);
+                    });
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.top = "0";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    copyMessage.textContent = successful ? 'Copied!' : 'Copy failed!';
+                    setTimeout(() => copyMessage.textContent = '', 2000);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    copyMessage.textContent = 'Copy failed!';
+                    setTimeout(() => copyMessage.textContent = '', 2000);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function downloadAsciiAsPng() {
+            const asciiText = asciiOutputPre.textContent;
+            const placeholderText = 'Your ASCII art will appear here';
+
+            if (!asciiText || asciiText.trim() === '' || asciiText === placeholderText) {
+                alert("Please generate some ASCII art first before downloading.");
+                return;
+            }
+
+            const lines = asciiText.split('\n');
+            const numLines = lines.length;
+            let maxLineLength = 0;
+            lines.forEach(line => {
+                if (line.length > maxLineLength) {
+                    maxLineLength = line.length;
+                }
+            });
+
+            if (numLines === 0 || maxLineLength === 0) {
+                 alert("Cannot download empty ASCII art.");
+                 return;
+            }
+
+            const pngFontSize = 10;
+            const pngLineHeight = 12;
+            const charWidthEstimate = pngFontSize * 0.6;
+            const padding = 20;
+            const canvasWidth = Math.ceil(maxLineLength * charWidthEstimate) + padding * 2;
+            const canvasHeight = numLines * pngLineHeight + padding * 2;
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvasWidth;
+            tempCanvas.height = canvasHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            const styles = window.getComputedStyle(asciiOutputPre);
+            const bgColor = styles.backgroundColor;
+            const textColor = styles.color;
+            const fontFamily = styles.fontFamily;
+
+            tempCtx.fillStyle = bgColor || '#ffffff';
+            tempCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            tempCtx.font = `${pngFontSize}px ${fontFamily}`;
+            tempCtx.fillStyle = textColor || '#000000';
+            tempCtx.textBaseline = 'top';
+
+            for (let i = 0; i < numLines; i++) {
+                tempCtx.fillText(lines[i], padding, padding + i * pngLineHeight);
+            }
+
+            try {
+                const dataUrl = tempCanvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = 'ascii-art.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error("Error generating PNG:", e);
+                alert("Failed to generate PNG for download.");
+            }
+        }
+
+
+        themeSelector.addEventListener('change', (e) => applyTheme(e.target.value));
+        fileUpload.addEventListener('change', handleFileUpload);
+
+        syncSliderAndInput(outputWidthSlider, outputWidthInput);
+        syncSliderAndInput(brightnessSlider, brightnessInput);
+        syncSliderAndInput(contrastSlider, contrastInput);
+        syncSliderAndInput(blurSlider, blurInput, true);
+        syncSliderAndInput(zoomSlider, zoomInput);
+        syncSliderAndInput(sobelThresholdSlider, sobelThresholdInput);
+        syncSliderAndInput(dogThresholdSlider, dogThresholdInput);
+
+        [
+            outputWidthSlider, brightnessSlider, contrastSlider, blurSlider,
+            ignoreWhiteCheckbox, invertColorsCheckbox, enableDitheringCheckbox,
+            ditherAlgorithmSelect, charSetSelect, manualCharsInput, edgeDetectionSelect
+        ].forEach(control => {
+            const eventType = (control.type === 'range' && control !== sobelThresholdSlider && control !== dogThresholdSlider && control !== zoomSlider) ? 'change' : 'change';
+             if (control !== zoomSlider) {
+                 control.addEventListener(eventType, processAndGenerateASCII);
+             }
+        });
+
+        enableDitheringCheckbox.addEventListener('change', (e) => {
+            ditherAlgorithmSelect.disabled = !e.target.checked;
+            processAndGenerateASCII();
+        });
+
+        charSetSelect.addEventListener('change', (e) => {
+            manualCharsetInputDiv.classList.toggle('hidden', e.target.value !== 'manual');
+            processAndGenerateASCII();
+        });
+
+        edgeDetectionSelect.addEventListener('change', (e) => {
+            const selectedEdge = e.target.value;
+            sobelOptionsDiv.classList.toggle('hidden', selectedEdge !== 'sobel');
+            dogOptionsDiv.classList.toggle('hidden', selectedEdge !== 'dog');
+            processAndGenerateASCII();
+        });
+
+        resetSettingsButton.addEventListener('click', () => {
+            location.reload();
+        });
+
+        copyButton.addEventListener('click', copyToClipboard);
+        downloadButton.addEventListener('click', downloadAsciiAsPng);
+
+        applyTheme(defaultSettings.theme);
+        resetControlsToDefaults();
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+             applyTheme(event.matches ? 'dark' : 'light');
+        });
+
+    </script>
+</body>
+</html>
