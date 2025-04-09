@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Fractal Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-size: 1.25rem;
+        line-height: 1;
+        display: inline-block;
+        font-style: normal;
+        font-weight: normal;
+        font-variant: normal;
+        text-rendering: auto;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .lucide-refresh-cw:before { content: "\ef19"; }
+      .lucide-download:before { content: "\ed6a"; }
+      .lucide-loader:before { content: "\ee4a"; }
+      .lucide-x:before { content: "\f077"; }
+
+      .loader {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      #messageArea {
+          padding: 0.75rem 1rem;
+          border-radius: 0.375rem;
+          margin-top: 1rem;
+          font-size: 0.875rem;
+          display: none;
+          position: relative;
+      }
+      #messageArea.info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+      #messageArea.success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+      #messageArea.error { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+      #messageCloseBtn {
+          position: absolute;
+          top: 0.5rem;
+          right: 0.5rem;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 0.25rem;
+          line-height: 1;
+          opacity: 0.6;
+          transition: opacity 0.2s;
+      }
+       #messageCloseBtn:hover {
+           opacity: 1;
+       }
+       #messageCloseBtn .lucide {
+            font-size: 1rem;
+            margin: 0;
+       }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        canvas { display: block; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: #000; max-width: 100%; height: auto; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); transition: opacity 0.3s ease-in-out; }
+        canvas.debouncing { opacity: 0.7; }
+        .control-panel label { display: block; margin-bottom: 0.25rem; font-weight: 500; color: #374151; font-size: 0.875rem; }
+        .control-panel input, .control-panel select { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-size: 0.875rem; }
+        .control-panel input:focus, .control-panel select:focus { outline: 2px solid transparent; outline-offset: 2px; border-color: #4f46e5; box-shadow: 0 0 0 2px #c7d2fe; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1.2rem; border-radius: 0.375rem; font-weight: 600; color: white; cursor: pointer; transition: background-color 0.2s ease, box-shadow 0.2s ease; border: none; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+        .btn:hover:not(:disabled) { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .btn-secondary { background-color: #6b7280; }
+        .btn-secondary:hover:not(:disabled) { background-color: #4b5563; }
+        .btn-danger { background-color: #dc2626; }
+        .btn-danger:hover:not(:disabled) { background-color: #b91c1c; }
+        .btn .lucide { margin-right: 0.5rem; }
+        #loadingIndicator { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(255, 255, 255, 0.85); padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); z-index: 10; text-align: center; color: #1f2937; flex-direction: column; align-items: center; justify-content: center; }
+        #loadingIndicator .lucide { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body class="p-4 md:p-8 bg-gray-100">
+
+    <div class="container mx-auto max-w-6xl">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Interactive Fractal Generator</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md control-panel space-y-4">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Controls</h2>
+
+                <div>
+                    <label for="fractalType">Fractal Type:</label>
+                    <select id="fractalType">
+                        <option value="mandelbrot">Mandelbrot Set</option>
+                        <option value="julia">Julia Set</option>
+                        <option value="burningShip">Burning Ship</option>
+                        <option value="tricorn">Tricorn (Mandelbar)</option>
+                        <option value="newton">Newton (z³-1)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="canvasWidth">Canvas Width:</label>
+                    <input type="number" id="canvasWidth" value="600" min="100" step="50">
+                </div>
+                 <div>
+                    <label for="canvasHeight">Canvas Height:</label>
+                    <input type="number" id="canvasHeight" value="600" min="100" step="50">
+                </div>
+
+                <div>
+                    <label for="maxIterations">Max Iterations:</label>
+                    <input type="number" id="maxIterations" value="100" min="10" max="1000" step="10">
+                </div>
+
+                <div>
+                    <label for="zoom">Zoom:</label>
+                    <input type="number" id="zoom" value="1" min="0.1" step="0.1">
+                </div>
+
+                <div>
+                    <label for="centerX">Center X:</label>
+                    <input type="number" id="centerX" value="0" step="0.1">
+                </div>
+
+                <div>
+                    <label for="centerY">Center Y:</label>
+                    <input type="number" id="centerY" value="0" step="0.1">
+                </div>
+
+                <div id="juliaParams" class="hidden space-y-4 border-t pt-4 mt-4 border-gray-200">
+                     <h3 class="text-lg font-medium text-gray-600">Julia Parameters (c)</h3>
+                    <div>
+                        <label for="juliaCReal">Real Part (cReal):</label>
+                        <input type="number" id="juliaCReal" value="-0.7" step="0.01">
+                    </div>
+                    <div>
+                        <label for="juliaCImag">Imaginary Part (cImag):</label>
+                        <input type="number" id="juliaCImag" value="0.27015" step="0.01">
+                    </div>
+                </div>
+
+                 <div>
+                    <label for="colorScheme">Color Scheme:</label>
+                    <select id="colorScheme">
+                        <option value="gradient">Smooth Gradient</option> <option value="zebra">Zebra Stripes</option> <option value="blue_gold">Blue & Gold</option> <option value="ice">Ice</option> <option value="psych">Psychedelic</option> <option value="rainbow">Rainbow</option>
+                        <option value="fire">Fire</option>
+                        <option value="ultra">Ultra</option>
+                        <option value="grayscale">Grayscale</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col space-y-3 pt-4 border-t border-gray-200">
+                    <button id="downloadBtn" class="btn btn-secondary">
+                        <span class="lucide lucide-download"></span>Download PNG
+                    </button>
+                    <button id="resetBtn" class="btn btn-danger">
+                         <span class="lucide lucide-refresh-cw"></span>Reset All
+                    </button>
+                </div>
+
+                <div id="messageArea">
+                    <span id="messageText"></span>
+                    <button id="messageCloseBtn" title="Dismiss message">
+                        <span class="lucide lucide-x"></span>
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="md:col-span-2 relative">
+                 <canvas id="fractalCanvas" class="w-full h-auto" width="600" height="600"></canvas>
+                 <div id="loadingIndicator">
+                     <span class="lucide lucide-loader loader"></span>
+                     <p>Generating</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('fractalCanvas');
+        const ctx = canvas.getContext('2d');
+        const fractalTypeSelect = document.getElementById('fractalType');
+        const canvasWidthInput = document.getElementById('canvasWidth');
+        const canvasHeightInput = document.getElementById('canvasHeight');
+        const maxIterationsInput = document.getElementById('maxIterations');
+        const zoomInput = document.getElementById('zoom');
+        const centerXInput = document.getElementById('centerX');
+        const centerYInput = document.getElementById('centerY');
+        const juliaParamsDiv = document.getElementById('juliaParams');
+        const juliaCRealInput = document.getElementById('juliaCReal');
+        const juliaCImagInput = document.getElementById('juliaCImag');
+        const colorSchemeSelect = document.getElementById('colorScheme');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const messageArea = document.getElementById('messageArea');
+        const messageText = document.getElementById('messageText');
+        const messageCloseBtn = document.getElementById('messageCloseBtn');
+
+        const defaultSettings = {
+            fractalType: 'mandelbrot', canvasWidth: 600, canvasHeight: 600, maxIterations: 100, zoom: 1, centerX: 0, centerY: 0, juliaCReal: -0.7, juliaCImag: 0.27015, colorScheme: 'gradient'
+        };
+
+        const STORAGE_KEY = 'fractalGeneratorSettings_v5';
+
+        const NEWTON_TOLERANCE_SQ = 1e-6 * 1e-6;
+        const NEWTON_ROOTS = [ { r: 1, i: 0 }, { r: -0.5, i: Math.sqrt(3) / 2 }, { r: -0.5, i: -Math.sqrt(3) / 2 } ];
+        const NEWTON_COLORS = [ { r: 255, g: 0, b: 0 }, { r: 0, g: 255, b: 0 }, { r: 0, g: 0, b: 255 } ];
+        const DEBOUNCE_DELAY = 400;
+
+        let debounceTimeout = null;
+        let messageTimeout = null;
+
+        function complexAdd(a, b) { return { r: a.r + b.r, i: a.i + b.i }; }
+        function complexSub(a, b) { return { r: a.r - b.r, i: a.i - b.i }; }
+        function complexMul(a, b) { return { r: a.r * b.r - a.i * b.i, i: a.r * b.i + a.i * b.r }; }
+        function complexMagSq(a) { return a.r * a.r + a.i * a.i; }
+        function complexDiv(a, b) {
+            const denom = b.r * b.r + b.i * b.i; if (denom === 0) return { r: NaN, i: NaN }; return { r: (a.r * b.r + a.i * b.i) / denom, i: (a.i * b.r - a.r * b.i) / denom };
+        }
+        function complexCube(a) { const aSq = complexMul(a, a); return complexMul(aSq, a); }
+
+        function showLoading(isLoading) {
+            loadingIndicator.style.display = isLoading ? 'flex' : 'none';
+        }
+
+        function displayMessage(message, type = 'info', duration = 5000) {
+            clearTimeout(messageTimeout);
+            messageText.textContent = message;
+            messageArea.className = '';
+            messageArea.classList.add(type);
+            messageArea.style.display = 'block';
+
+            if (duration > 0) {
+                 messageTimeout = setTimeout(() => {
+                    hideMessage();
+                 }, duration);
+            }
+        }
+
+        function hideMessage() {
+             clearTimeout(messageTimeout);
+             messageArea.style.display = 'none';
+             messageText.textContent = '';
+             messageArea.className = '';
+        }
+
+        messageCloseBtn.addEventListener('click', hideMessage);
+
+        function getColor(n, maxIterations, scheme, fractalType = 'mandelbrot', rootIndex = -1) {
+            if (n === maxIterations) return '#000000';
+            if (fractalType === 'newton') { if (rootIndex >= 0 && rootIndex < NEWTON_COLORS.length) { const baseColor = NEWTON_COLORS[rootIndex]; const shade = 0.6 + 0.4 * (1 - n / maxIterations); return `rgb(${Math.floor(baseColor.r * shade)}, ${Math.floor(baseColor.g * shade)}, ${Math.floor(baseColor.b * shade)})`; } else { return '#222222'; } }
+            const t = n / maxIterations;
+            switch (scheme) {
+                case 'zebra': { const color1 = '#FFFFFF'; const color2 = '#000000'; return (n % 2 === 0) ? color1 : color2; }
+                case 'blue_gold': { const r = Math.floor(50 + 150 * Math.sin(t * Math.PI * 2)); const g = Math.floor(100 + 100 * Math.cos(t * Math.PI)); const b = Math.floor(150 + 100 * t); return `rgb(${r}, ${g}, ${b})`; }
+                case 'ice': { const r = Math.floor(200 * t + 55 * (1-t)); const g = Math.floor(220 * Math.sqrt(t) + 35 * (1-t)); const b = 255; return `rgb(${r}, ${g}, ${b})`; }
+                case 'psych': { const hue = (n * 15) % 360; const saturation = 70 + 30 * Math.sin(t * Math.PI * 3); const lightness = 40 + 20 * Math.cos(t * Math.PI * 5); return `hsl(${hue}, ${saturation}%, ${lightness}%)`; }
+                case 'grayscale': { const intensity = Math.floor(255 * t); return `rgb(${intensity}, ${intensity}, ${intensity})`; }
+                case 'rainbow': { const hue = (t * 360) % 360; return `hsl(${hue}, 100%, 50%)`; }
+                case 'ultra': { const r = Math.floor(9 * (1 - t) * t * t * t * 255); const g = Math.floor(15 * (1 - t) * (1 - t) * t * t * 255); const b = Math.floor(8.5 * (1 - t) * (1 - t) * (1 - t) * t * 255); return `rgb(${r}, ${g}, ${b})`; }
+                case 'fire': { const r = Math.floor(255 * Math.sqrt(t)); const g = Math.floor(255 * t * t); const b = Math.floor(50 * Math.sin(Math.PI * t)); return `rgb(${r}, ${g}, ${b})`; }
+                case 'gradient': default: { const r = 0; const g = Math.floor(100 + 155 * Math.sqrt(t)); const b = Math.floor(150 + 105 * t); return `rgb(${r}, ${g}, ${b})`; }
+            }
+        }
+
+        function calculateMandelbrot(cx, cy, maxIterations) { let z = { r: 0, i: 0 }; let c = { r: cx, i: cy }; for (let n = 0; n < maxIterations; n++) { if (complexMagSq(z) > 4) return { n: n, root: -1 }; z = complexAdd(complexMul(z, z), c); } return { n: maxIterations, root: -1 }; }
+        function calculateJulia(zx_start, zy_start, cReal, cImag, maxIterations) { let z = { r: zx_start, i: zy_start }; let c = { r: cReal, i: cImag }; for (let n = 0; n < maxIterations; n++) { if (complexMagSq(z) > 4) return { n: n, root: -1 }; z = complexAdd(complexMul(z, z), c); } return { n: maxIterations, root: -1 }; }
+        function calculateBurningShip(cx, cy, maxIterations) { let z = { r: 0, i: 0 }; let c = { r: cx, i: cy }; for (let n = 0; n < maxIterations; n++) { if (complexMagSq(z) > 4) return { n: n, root: -1 }; const z_abs = { r: Math.abs(z.r), i: Math.abs(z.i) }; z = complexAdd(complexMul(z_abs, z_abs), c); } return { n: maxIterations, root: -1 }; }
+        function calculateTricorn(cx, cy, maxIterations) { let z = { r: 0, i: 0 }; let c = { r: cx, i: cy }; for (let n = 0; n < maxIterations; n++) { if (complexMagSq(z) > 4) return { n: n, root: -1 }; const z_conj = { r: z.r, i: -z.i }; z = complexAdd(complexMul(z_conj, z_conj), c); } return { n: maxIterations, root: -1 }; }
+        function calculateNewton(zx_start, zy_start, maxIterations) { let z = { r: zx_start, i: zy_start }; const one = { r: 1, i: 0 }; const three = { r: 3, i: 0 }; for (let n = 0; n < maxIterations; n++) { const zCubed = complexCube(z); const fz = complexSub(zCubed, one); for (let rootIdx = 0; rootIdx < NEWTON_ROOTS.length; rootIdx++) { const diff = complexSub(z, NEWTON_ROOTS[rootIdx]); if (complexMagSq(diff) < NEWTON_TOLERANCE_SQ) return { n: n, root: rootIdx }; } const zSq = complexMul(z, z); const fpz = complexMul(three, zSq); if (complexMagSq(fpz) < 1e-12) return { n: maxIterations, root: -1 }; const correction = complexDiv(fz, fpz); z = complexSub(z, correction); if (isNaN(z.r) || isNaN(z.i)) return { n: maxIterations, root: -1 }; } return { n: maxIterations, root: -1 }; }
+
+        function drawFractal() {
+            showLoading(true);
+            canvas.classList.remove('debouncing');
+            hideMessage();
+
+            setTimeout(() => {
+                try {
+                    const settings = getCurrentSettings();
+                    const width = settings.canvasWidth; const height = settings.canvasHeight; const maxIterations = settings.maxIterations; const zoom = settings.zoom; const centerX = settings.centerX; const centerY = settings.centerY; const fractalType = settings.fractalType; const juliaCReal = settings.juliaCReal; const juliaCImag = settings.juliaCImag; const colorScheme = settings.colorScheme;
+                    canvas.width = width; canvas.height = height; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, width, height);
+                    const imageData = ctx.createImageData(width, height); const data = imageData.data;
+                    let viewWidth, viewHeight, offsetX, offsetY;
+                    if (fractalType === 'newton') viewWidth = 4.0 / zoom; else if (fractalType === 'burningShip') viewWidth = 3.5 / zoom; else viewWidth = 3.0 / zoom;
+                    viewHeight = (viewWidth * height) / width; const scaleX = viewWidth / width; const scaleY = viewHeight / height; offsetX = centerX - viewWidth / 2; offsetY = centerY - viewHeight / 2;
+                    for (let px = 0; px < width; px++) { for (let py = 0; py < height; py++) { const x0 = px * scaleX + offsetX; const y0 = py * scaleY + offsetY; let result; switch (fractalType) { case 'julia': result = calculateJulia(x0, y0, juliaCReal, juliaCImag, maxIterations); break; case 'burningShip': result = calculateBurningShip(x0, y0, maxIterations); break; case 'tricorn': result = calculateTricorn(x0, y0, maxIterations); break; case 'newton': result = calculateNewton(x0, y0, maxIterations); break; default: result = calculateMandelbrot(x0, y0, maxIterations); break; } const color = getColor(result.n, maxIterations, colorScheme, fractalType, result.root); const rgb = hexToRgb(color); const index = (py * width + px) * 4; data[index] = rgb.r; data[index + 1] = rgb.g; data[index + 2] = rgb.b; data[index + 3] = 255; } }
+                    ctx.putImageData(imageData, 0, 0);
+                    saveSettings(settings);
+                } catch (error) {
+                    console.error("Error generating fractal:", error);
+                    displayMessage("An error occurred while generating the fractal. Check console for details.", 'error', 0);
+                } finally {
+                    showLoading(false);
+                }
+            }, 10);
+        }
+
+        function handleInputChange() {
+            clearTimeout(debounceTimeout);
+            canvas.classList.add('debouncing');
+            debounceTimeout = setTimeout(() => {
+                drawFractal();
+            }, DEBOUNCE_DELAY);
+        }
+
+        function hexToRgb(colorStr) { if (!colorStr) return { r: 0, g: 0, b: 0 }; if (!hexToRgb.cache) hexToRgb.cache = {}; if (hexToRgb.cache[colorStr]) return hexToRgb.cache[colorStr]; let result = { r: 0, g: 0, b: 0 }; try { if (colorStr.startsWith('#')) { const bigint = parseInt(colorStr.slice(1), 16); result = { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }; } else if (colorStr.startsWith('rgb')) { const parts = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/); if (parts) result = { r: parseInt(parts[1]), g: parseInt(parts[2]), b: parseInt(parts[3]) }; } else if (colorStr.startsWith('hsl')) { const parts = colorStr.match(/hsla?\((\d+),\s*([\d.]+)%,\s*([\d.]+)%(?:,\s*[\d.]+)?\)/); if (parts) { let h = parseInt(parts[1]) / 360, s = parseInt(parts[2]) / 100, l = parseInt(parts[3]) / 100; let r, g, b; if (s == 0) { r = g = b = l; } else { const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; }; const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q; r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1/3); } result = { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) }; } } } catch (e) { console.warn("Error parsing color string:", colorStr, e); } hexToRgb.cache[colorStr] = result; return result; }
+
+        function getCurrentSettings() { const canvasWidth = parseInt(canvasWidthInput.value, 10) || defaultSettings.canvasWidth; const canvasHeight = parseInt(canvasHeightInput.value, 10) || defaultSettings.canvasHeight; const maxIterations = parseInt(maxIterationsInput.value, 10) || defaultSettings.maxIterations; const zoom = parseFloat(zoomInput.value) || defaultSettings.zoom; const centerX = parseFloat(centerXInput.value) || defaultSettings.centerX; const centerY = parseFloat(centerYInput.value) || defaultSettings.centerY; const juliaCReal = parseFloat(juliaCRealInput.value) || defaultSettings.juliaCReal; const juliaCImag = parseFloat(juliaCImagInput.value) || defaultSettings.juliaCImag; return { fractalType: fractalTypeSelect.value, canvasWidth: Math.max(100, canvasWidth), canvasHeight: Math.max(100, canvasHeight), maxIterations: Math.max(10, Math.min(1000, maxIterations)), zoom: Math.max(0.1, zoom), centerX: centerX, centerY: centerY, juliaCReal: juliaCReal, juliaCImag: juliaCImag, colorScheme: colorSchemeSelect.value }; }
+        function applySettings(settings) { fractalTypeSelect.value = settings.fractalType; canvasWidthInput.value = settings.canvasWidth; canvasHeightInput.value = settings.canvasHeight; maxIterationsInput.value = settings.maxIterations; zoomInput.value = settings.zoom; centerXInput.value = settings.centerX; centerYInput.value = settings.centerY; juliaCRealInput.value = settings.juliaCReal; juliaCImagInput.value = settings.juliaCImag; colorSchemeSelect.value = settings.colorScheme; toggleJuliaParams(settings.fractalType === 'julia'); canvas.width = settings.canvasWidth; canvas.height = settings.canvasHeight; canvas.style.aspectRatio = `${settings.canvasWidth} / ${settings.canvasHeight}`; }
+        function saveSettings(settings) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (e) { console.warn("Could not save settings:", e); } }
+        function loadSettings() { try { const savedSettings = localStorage.getItem(STORAGE_KEY); if (savedSettings) { const parsed = JSON.parse(savedSettings); if (parsed && typeof parsed === 'object' && parsed.fractalType) { const typeExists = Array.from(fractalTypeSelect.options).some(opt => opt.value === parsed.fractalType); if (!typeExists) { parsed.fractalType = defaultSettings.fractalType; } const colorExists = Array.from(colorSchemeSelect.options).some(opt => opt.value === parsed.colorScheme); if (!colorExists) { parsed.colorScheme = defaultSettings.colorScheme; } return { ...defaultSettings, ...parsed }; } } } catch (e) { console.warn("Could not load settings:", e); localStorage.removeItem(STORAGE_KEY); } return null; }
+        function toggleJuliaParams(show) { juliaParamsDiv.classList.toggle('hidden', !show); }
+
+        fractalTypeSelect.addEventListener('change', handleInputChange);
+        canvasWidthInput.addEventListener('input', handleInputChange);
+        canvasHeightInput.addEventListener('input', handleInputChange);
+        maxIterationsInput.addEventListener('input', handleInputChange);
+        zoomInput.addEventListener('input', handleInputChange);
+        centerXInput.addEventListener('input', handleInputChange);
+        centerYInput.addEventListener('input', handleInputChange);
+        juliaCRealInput.addEventListener('input', handleInputChange);
+        juliaCImagInput.addEventListener('input', handleInputChange);
+        colorSchemeSelect.addEventListener('change', handleInputChange);
+
+        fractalTypeSelect.addEventListener('change', (e) => { const currentType = e.target.value; toggleJuliaParams(currentType === 'julia'); if (currentType === 'burningShip') { centerXInput.value = -0.5; centerYInput.value = -0.5; zoomInput.value = 1; } else if (currentType === 'tricorn') { centerXInput.value = -0.5; centerYInput.value = 0; zoomInput.value = 1; } else if (currentType === 'newton') { centerXInput.value = 0; centerYInput.value = 0; zoomInput.value = 1; } else if (currentType === 'mandelbrot') { centerXInput.value = defaultSettings.centerX; centerYInput.value = defaultSettings.centerY; zoomInput.value = defaultSettings.zoom; } });
+
+        downloadBtn.addEventListener('click', () => {
+            const settings = getCurrentSettings(); const link = document.createElement('a'); link.download = `fractal_${settings.fractalType}_${settings.canvasWidth}x${settings.canvasHeight}_${Date.now()}.png`;
+            try { if (canvas.width > 0 && canvas.height > 0 && loadingIndicator.style.display === 'none') { link.href = canvas.toDataURL('image/png'); link.click(); } else if (loadingIndicator.style.display !== 'none') { displayMessage("Please wait for generation to complete.", 'info'); } else { displayMessage("Canvas is empty. Cannot download.", 'info'); }
+            } catch (e) { console.error("Download error:", e); displayMessage(`Download failed: ${e.message}`, 'error', 0); }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) { console.warn("Could not clear localStorage:", e); }
+            applySettings(defaultSettings);
+            handleInputChange();
+            displayMessage("Settings reset to defaults.", 'success');
+        });
+
+        function initialize() {
+            const loaded = loadSettings();
+            let settingsToApply = loaded || defaultSettings;
+            settingsToApply = { ...defaultSettings, ...settingsToApply };
+            console.log(loaded ? "Loaded settings." : "Using defaults.");
+            applySettings(settingsToApply);
+            drawFractal();
+        }
+
+        document.addEventListener('DOMContentLoaded', initialize);
+
+    </script>
+
+</body>
+</html>
