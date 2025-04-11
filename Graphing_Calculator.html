@@ -371,7 +371,7 @@
 
         function updateEquationListUI() {
             equationListDiv.innerHTML = '';
-            if (equations.length === 0) { equationListDiv.innerHTML = '<p class="text-xs text-gray-500">No equations added yet.</p>'; return; }
+            if (equations.length === 0) { equationListDiv.innerHTML = '<p class="text-xs text-gray-500">No equations added yet</p>'; return; }
             equations.forEach(eq => {
                 const div = document.createElement('div');
                 div.className = `equation-item flex items-center justify-between text-sm p-1 bg-white rounded border hover:bg-gray-50 ${eq.id === selectedEquationId ? 'selected border-indigo-300' : 'border-transparent'}`;
